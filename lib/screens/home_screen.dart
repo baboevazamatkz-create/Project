@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/expense_repository.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
+import '../theme.dart';
 import '../widgets/add_expense_sheet.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/summary_card.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String householdCode;
+
+  const HomeScreen({super.key, required this.householdCode});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -17,37 +21,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _repository = ExpenseRepository();
 
-  List<Expense> _expenses = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadExpenses();
-  }
-
-  Future<void> _loadExpenses() async {
-    final expenses = await _repository.loadExpenses();
-    expenses.sort((a, b) => b.date.compareTo(a.date));
-    setState(() {
-      _expenses = expenses;
-      _loading = false;
-    });
-  }
-
-  Future<void> _addExpense(Expense expense) async {
-    setState(() {
-      _expenses = [expense, ..._expenses]..sort((a, b) => b.date.compareTo(a.date));
-    });
-    await _repository.saveExpenses(_expenses);
+  Future<void> _addExpense(Expense expense) {
+    return _repository.addExpense(widget.householdCode, expense);
   }
 
   Future<void> _deleteExpense(Expense expense) async {
-    final removedIndex = _expenses.indexOf(expense);
-    setState(() {
-      _expenses = List.of(_expenses)..remove(expense);
-    });
-    await _repository.saveExpenses(_expenses);
+    await _repository.deleteExpense(widget.householdCode, expense.id);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -56,16 +35,57 @@ class _HomeScreenState extends State<HomeScreen> {
         content: const Text('Расход удалён'),
         action: SnackBarAction(
           label: 'Отменить',
-          onPressed: () async {
-            setState(() {
-              final restored = List.of(_expenses);
-              final insertAt = removedIndex.clamp(0, restored.length);
-              restored.insert(insertAt, expense);
-              _expenses = restored;
-            });
-            await _repository.saveExpenses(_expenses);
-          },
+          onPressed: () => _repository.addExpense(widget.householdCode, expense),
         ),
+      ),
+    );
+  }
+
+  void _showHouseholdCode() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Код бюджета'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Поделитесь этим кодом, чтобы вести бюджет вместе:'),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: kAccentColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                widget.householdCode,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 4,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: widget.householdCode));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Код скопирован')),
+              );
+            },
+            icon: const Icon(Icons.copy_rounded, size: 18),
+            label: const Text('Скопировать'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Закрыть'),
+          ),
+        ],
       ),
     );
   }
@@ -82,87 +102,109 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Map<AppCurrency, double> _totalsBy(bool Function(Expense) predicate) {
+  Map<AppCurrency, double> _totalsBy(
+    List<Expense> expenses,
+    bool Function(Expense) predicate,
+  ) {
     final totals = <AppCurrency, double>{};
-    for (final expense in _expenses.where(predicate)) {
+    for (final expense in expenses.where(predicate)) {
       totals[expense.currency] = (totals[expense.currency] ?? 0) + expense.amount;
     }
     return totals;
   }
 
-  Map<AppCurrency, double> get _todayTotals {
+  Map<AppCurrency, double> _todayTotals(List<Expense> expenses) {
     final now = DateTime.now();
-    return _totalsBy((e) =>
-        e.date.year == now.year &&
-        e.date.month == now.month &&
-        e.date.day == now.day);
+    return _totalsBy(
+      expenses,
+      (e) =>
+          e.date.year == now.year &&
+          e.date.month == now.month &&
+          e.date.day == now.day,
+    );
   }
 
-  Map<AppCurrency, double> get _monthTotals {
+  Map<AppCurrency, double> _monthTotals(List<Expense> expenses) {
     final now = DateTime.now();
-    return _totalsBy((e) => e.date.year == now.year && e.date.month == now.month);
+    return _totalsBy(
+      expenses,
+      (e) => e.date.year == now.year && e.date.month == now.month,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Расходы')),
+      appBar: AppBar(
+        title: const Text('Расходы'),
+        actions: [
+          IconButton(
+            onPressed: _showHouseholdCode,
+            icon: const Icon(Icons.people_alt_outlined),
+            tooltip: 'Код бюджета',
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddExpenseSheet,
         child: const Icon(Icons.add),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadExpenses,
-              child: CustomScrollView(
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    sliver: SliverToBoxAdapter(
-                      child: SummaryCard(
-                        todayTotals: _todayTotals,
-                        monthTotals: _monthTotals,
-                      ),
-                    ),
+      body: StreamBuilder<List<Expense>>(
+        stream: _repository.watchExpenses(widget.householdCode),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final expenses = snapshot.data!;
+          return CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                sliver: SliverToBoxAdapter(
+                  child: SummaryCard(
+                    todayTotals: _todayTotals(expenses),
+                    monthTotals: _monthTotals(expenses),
                   ),
-                  if (_expenses.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _EmptyState(),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                      sliver: SliverList.separated(
-                        itemCount: _expenses.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final expense = _expenses[index];
-                          return Dismissible(
-                            key: ValueKey(expense.id),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade400,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Icon(Icons.delete_outline_rounded,
-                                  color: Colors.white),
-                            ),
-                            onDismissed: (_) => _deleteExpense(expense),
-                            child: ExpenseTile(
-                              expense: expense,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                ],
+                ),
               ),
-            ),
+              if (expenses.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _EmptyState(),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                  sliver: SliverList.separated(
+                    itemCount: expenses.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final expense = expenses[index];
+                      return Dismissible(
+                        key: ValueKey(expense.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade400,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(Icons.delete_outline_rounded,
+                              color: Colors.white),
+                        ),
+                        onDismissed: (_) => _deleteExpense(expense),
+                        child: ExpenseTile(
+                          expense: expense,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

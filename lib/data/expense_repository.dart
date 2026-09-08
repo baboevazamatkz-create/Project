@@ -1,23 +1,26 @@
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/expense.dart';
 
 class ExpenseRepository {
-  static const _storageKey = 'expenses';
+  final _firestore = FirebaseFirestore.instance;
 
-  Future<List<Expense>> loadExpenses() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_storageKey) ?? [];
-    return raw
-        .map((e) => Expense.fromJson(jsonDecode(e) as Map<String, dynamic>))
-        .toList();
+  CollectionReference<Map<String, dynamic>> _expensesRef(String householdCode) =>
+      _firestore.collection('households').doc(householdCode).collection('expenses');
+
+  Stream<List<Expense>> watchExpenses(String householdCode) {
+    return _expensesRef(householdCode)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Expense.fromJson(doc.data())).toList());
   }
 
-  Future<void> saveExpenses(List<Expense> expenses) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = expenses.map((e) => jsonEncode(e.toJson())).toList();
-    await prefs.setStringList(_storageKey, raw);
+  Future<void> addExpense(String householdCode, Expense expense) {
+    return _expensesRef(householdCode).doc(expense.id).set(expense.toJson());
+  }
+
+  Future<void> deleteExpense(String householdCode, String expenseId) {
+    return _expensesRef(householdCode).doc(expenseId).delete();
   }
 }
