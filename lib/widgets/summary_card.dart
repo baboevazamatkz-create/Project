@@ -34,7 +34,7 @@ class SummaryCard extends StatelessWidget {
           Container(
             width: 1,
             height: 40,
-            color: Colors.white.withOpacity(0.15),
+            color: Colors.white.withValues(alpha: 0.15),
           ),
           Expanded(
             child: _SummaryItem(
@@ -62,7 +62,7 @@ class _SummaryItem extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),

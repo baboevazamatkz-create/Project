@@ -30,7 +30,7 @@ ThemeData buildAppTheme(Brightness brightness) {
       backgroundColor: kAccentColor,
       foregroundColor: Colors.white,
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 0,
       color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -43,7 +43,7 @@ ThemeData buildAppTheme(Brightness brightness) {
           displayColor: isDark ? Colors.white : const Color(0xFF1A1A1A),
         ),
     dividerTheme: DividerThemeData(
-      color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
+      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
       thickness: 1,
     ),
     inputDecorationTheme: InputDecorationTheme(
