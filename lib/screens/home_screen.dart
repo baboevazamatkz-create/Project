@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../data/expense_repository.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
-import '../theme.dart';
+import '../models/household.dart';
+import '../models/transaction_type.dart';
 import '../widgets/add_expense_sheet.dart';
 import '../widgets/expense_tile.dart';
+import '../widgets/household_switcher_sheet.dart';
 import '../widgets/summary_card.dart';
 import 'stats_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String householdCode;
+  final Household household;
+  final List<Household> households;
+  final ValueChanged<String> onSwitchHousehold;
+  final VoidCallback onAddHousehold;
 
-  const HomeScreen({super.key, required this.householdCode});
+  const HomeScreen({
+    super.key,
+    required this.household,
+    required this.households,
+    required this.onSwitchHousehold,
+    required this.onAddHousehold,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -23,71 +33,38 @@ class _HomeScreenState extends State<HomeScreen> {
   final _repository = ExpenseRepository();
 
   Future<void> _addExpense(Expense expense) {
-    return _repository.addExpense(widget.householdCode, expense);
+    return _repository.addExpense(widget.household.code, expense);
   }
 
   Future<void> _deleteExpense(Expense expense) async {
-    await _repository.deleteExpense(widget.householdCode, expense.id);
+    await _repository.deleteExpense(widget.household.code, expense.id);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Расход удалён'),
+        content: Text(expense.isIncome ? 'Доход удалён' : 'Расход удалён'),
         action: SnackBarAction(
           label: 'Отменить',
           onPressed: () =>
-              _repository.addExpense(widget.householdCode, expense),
+              _repository.addExpense(widget.household.code, expense),
         ),
       ),
     );
   }
 
-  void _showHouseholdCode() {
-    showDialog<void>(
+  void _showHouseholdSwitcher() {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Код бюджета'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Поделитесь этим кодом, чтобы вести бюджет вместе:'),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: kAccentColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text(
-                widget.householdCode,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 4,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton.icon(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: widget.householdCode));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Код скопирован')),
-              );
-            },
-            icon: const Icon(Icons.copy_rounded, size: 18),
-            label: const Text('Скопировать'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Закрыть'),
-          ),
-        ],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => HouseholdSwitcherSheet(
+        households: widget.households,
+        activeCode: widget.household.code,
+        onSwitch: widget.onSwitchHousehold,
+        onAddHousehold: widget.onAddHousehold,
       ),
     );
   }
@@ -98,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openAddExpenseSheet() {
+  void _openAddSheet(TransactionType type) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -106,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => AddExpenseSheet(onSubmit: _addExpense),
+      builder: (context) => AddExpenseSheet(type: type, onSubmit: _addExpense),
     );
   }
 
@@ -122,34 +99,31 @@ class _HomeScreenState extends State<HomeScreen> {
     return totals;
   }
 
-  Map<AppCurrency, double> _todayTotals(List<Expense> expenses) {
+  Map<AppCurrency, double> _totalsFor(
+    List<Expense> expenses, {
+    required bool sameDay,
+    required bool isIncome,
+  }) {
     final now = DateTime.now();
     return _totalsBy(
       expenses,
       (e) =>
+          e.isIncome == isIncome &&
           e.date.year == now.year &&
           e.date.month == now.month &&
-          e.date.day == now.day,
-    );
-  }
-
-  Map<AppCurrency, double> _monthTotals(List<Expense> expenses) {
-    final now = DateTime.now();
-    return _totalsBy(
-      expenses,
-      (e) => e.date.year == now.year && e.date.month == now.month,
+          (!sameDay || e.date.day == now.day),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Expense>>(
-      stream: _repository.watchExpenses(widget.householdCode),
+      stream: _repository.watchExpenses(widget.household.code),
       builder: (context, snapshot) {
         final expenses = snapshot.data ?? const <Expense>[];
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Расходы'),
+            title: Text(widget.household.label),
             actions: [
               IconButton(
                 onPressed: () => _openStats(expenses),
@@ -157,15 +131,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 tooltip: 'По категориям',
               ),
               IconButton(
-                onPressed: _showHouseholdCode,
+                onPressed: _showHouseholdSwitcher,
                 icon: const Icon(Icons.people_alt_outlined),
-                tooltip: 'Код бюджета',
+                tooltip: 'Мои бюджеты',
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: _openAddExpenseSheet,
-            child: const Icon(Icons.add),
+          floatingActionButton: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton(
+                heroTag: 'add_income',
+                backgroundColor: Colors.green.shade600,
+                onPressed: () => _openAddSheet(TransactionType.income),
+                tooltip: 'Добавить доход',
+                child: const Icon(Icons.add),
+              ),
+              const SizedBox(width: 14),
+              FloatingActionButton(
+                heroTag: 'add_expense',
+                onPressed: () => _openAddSheet(TransactionType.expense),
+                tooltip: 'Добавить расход',
+                child: const Icon(Icons.remove),
+              ),
+            ],
           ),
           body: !snapshot.hasData
               ? const Center(child: CircularProgressIndicator())
@@ -175,8 +164,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                       sliver: SliverToBoxAdapter(
                         child: SummaryCard(
-                          todayTotals: _todayTotals(expenses),
-                          monthTotals: _monthTotals(expenses),
+                          todayExpenseTotals: _totalsFor(
+                            expenses,
+                            sameDay: true,
+                            isIncome: false,
+                          ),
+                          todayIncomeTotals: _totalsFor(
+                            expenses,
+                            sameDay: true,
+                            isIncome: true,
+                          ),
+                          monthExpenseTotals: _totalsFor(
+                            expenses,
+                            sameDay: false,
+                            isIncome: false,
+                          ),
+                          monthIncomeTotals: _totalsFor(
+                            expenses,
+                            sameDay: false,
+                            isIncome: true,
+                          ),
                         ),
                       ),
                     ),

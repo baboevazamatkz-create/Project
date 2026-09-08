@@ -3,14 +3,20 @@ import 'package:flutter/material.dart';
 import '../models/currency.dart';
 import '../theme.dart';
 
+const _incomeColor = Color(0xFF6EE7A8);
+
 class SummaryCard extends StatelessWidget {
-  final Map<AppCurrency, double> todayTotals;
-  final Map<AppCurrency, double> monthTotals;
+  final Map<AppCurrency, double> todayExpenseTotals;
+  final Map<AppCurrency, double> todayIncomeTotals;
+  final Map<AppCurrency, double> monthExpenseTotals;
+  final Map<AppCurrency, double> monthIncomeTotals;
 
   const SummaryCard({
     super.key,
-    required this.todayTotals,
-    required this.monthTotals,
+    required this.todayExpenseTotals,
+    required this.todayIncomeTotals,
+    required this.monthExpenseTotals,
+    required this.monthIncomeTotals,
   });
 
   @override
@@ -40,7 +46,8 @@ class SummaryCard extends StatelessWidget {
               icon: Icons.today_rounded,
               iconColor: const Color(0xFFFFB84C),
               label: 'Сегодня',
-              totals: todayTotals,
+              expenseTotals: todayExpenseTotals,
+              incomeTotals: todayIncomeTotals,
             ),
           ),
           Container(
@@ -54,7 +61,8 @@ class SummaryCard extends StatelessWidget {
               icon: Icons.calendar_month_rounded,
               iconColor: const Color(0xFF4ADEDE),
               label: 'За месяц',
-              totals: monthTotals,
+              expenseTotals: monthExpenseTotals,
+              incomeTotals: monthIncomeTotals,
             ),
           ),
         ],
@@ -67,21 +75,23 @@ class _SummaryItem extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String label;
-  final Map<AppCurrency, double> totals;
+  final Map<AppCurrency, double> expenseTotals;
+  final Map<AppCurrency, double> incomeTotals;
 
   const _SummaryItem({
     required this.icon,
     required this.iconColor,
     required this.label,
-    required this.totals,
+    required this.expenseTotals,
+    required this.incomeTotals,
   });
 
   @override
   Widget build(BuildContext context) {
-    final entries = totals.entries.toList();
-    final values = entries.isEmpty
-        ? [AppCurrency.rub.format.format(0)]
-        : entries.map((e) => e.key.format.format(e.value)).toList();
+    final currencies = AppCurrency.values
+        .where((c) => (expenseTotals[c] ?? 0) > 0 || (incomeTotals[c] ?? 0) > 0)
+        .toList();
+    if (currencies.isEmpty) currencies.add(AppCurrency.rub);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -104,18 +114,33 @@ class _SummaryItem extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        for (final value in values)
+        for (final currency in currencies) ...[
           Text(
-            value,
+            '${(expenseTotals[currency] ?? 0) > 0 ? '−' : ''}'
+            '${currency.format.format(expenseTotals[currency] ?? 0)}',
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: 17,
               fontWeight: FontWeight.w700,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
           ),
+          if ((incomeTotals[currency] ?? 0) > 0)
+            Text(
+              '+${currency.format.format(incomeTotals[currency]!)}',
+              style: const TextStyle(
+                color: _incomeColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          const SizedBox(height: 4),
+        ],
       ],
     );
   }

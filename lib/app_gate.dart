@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'data/household_repository.dart';
+import 'models/household.dart';
 import 'screens/home_screen.dart';
 import 'screens/household_screen.dart';
 
@@ -13,22 +14,59 @@ class AppGate extends StatefulWidget {
 
 class _AppGateState extends State<AppGate> {
   final _repository = HouseholdRepository();
-  String? _householdCode;
+  List<Household> _households = [];
+  String? _activeCode;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadHouseholdCode();
+    _load();
   }
 
-  Future<void> _loadHouseholdCode() async {
-    final code = await _repository.loadHouseholdCode();
+  Future<void> _load() async {
+    final households = await _repository.loadHouseholds();
+    final activeCode = await _repository.loadActiveCode();
     if (!mounted) return;
     setState(() {
-      _householdCode = code;
+      _households = households;
+      _activeCode = households.any((h) => h.code == activeCode)
+          ? activeCode
+          : (households.isNotEmpty ? households.first.code : null);
       _loading = false;
     });
+  }
+
+  Future<void> _onHouseholdReady(Household household) async {
+    await _repository.addHousehold(household);
+    await _repository.setActiveCode(household.code);
+    if (!mounted) return;
+    setState(() {
+      if (!_households.any((h) => h.code == household.code)) {
+        _households = [..._households, household];
+      }
+      _activeCode = household.code;
+    });
+  }
+
+  Future<void> _switchHousehold(String code) async {
+    await _repository.setActiveCode(code);
+    if (!mounted) return;
+    setState(() => _activeCode = code);
+  }
+
+  void _openAddHouseholdFlow() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => HouseholdScreen(
+          canCancel: true,
+          onReady: (household) async {
+            await _onHouseholdReady(household);
+            if (mounted) Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -38,12 +76,16 @@ class _AppGateState extends State<AppGate> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    final code = _householdCode;
-    if (code == null) {
-      return HouseholdScreen(
-        onReady: (newCode) => setState(() => _householdCode = newCode),
-      );
+    final activeCode = _activeCode;
+    if (activeCode == null) {
+      return HouseholdScreen(onReady: _onHouseholdReady);
     }
-    return HomeScreen(householdCode: code);
+    final activeHousehold = _households.firstWhere((h) => h.code == activeCode);
+    return HomeScreen(
+      household: activeHousehold,
+      households: _households,
+      onSwitchHousehold: _switchHousehold,
+      onAddHousehold: _openAddHouseholdFlow,
+    );
   }
 }

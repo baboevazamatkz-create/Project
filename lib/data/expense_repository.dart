@@ -5,8 +5,12 @@ import '../models/expense.dart';
 class ExpenseRepository {
   final _firestore = FirebaseFirestore.instance;
 
-  CollectionReference<Map<String, dynamic>> _expensesRef(String householdCode) =>
-      _firestore.collection('households').doc(householdCode).collection('expenses');
+  CollectionReference<Map<String, dynamic>> _expensesRef(
+          String householdCode) =>
+      _firestore
+          .collection('households')
+          .doc(householdCode)
+          .collection('expenses');
 
   Stream<List<Expense>> watchExpenses(String householdCode) {
     return _expensesRef(householdCode)
