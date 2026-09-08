@@ -201,9 +201,9 @@ class _CategoriesTab extends StatelessWidget {
                     ?.withValues(alpha: 0.6),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 28),
             SizedBox(
-              height: 220,
+              height: 240,
               child: PieChart(
                 PieChartData(
                   sections: entries.map((entry) {
@@ -214,7 +214,7 @@ class _CategoriesTab extends StatelessWidget {
                       color: entry.key.color,
                       title:
                           percent >= 6 ? '${percent.toStringAsFixed(0)}%' : '',
-                      radius: 88,
+                      radius: 76,
                       titleStyle: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -223,7 +223,7 @@ class _CategoriesTab extends StatelessWidget {
                     );
                   }).toList(),
                   sectionsSpace: 2,
-                  centerSpaceRadius: 52,
+                  centerSpaceRadius: 36,
                 ),
               ),
             ),
