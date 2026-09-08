@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
+import '../models/currency.dart';
 import '../theme.dart';
 
 class SummaryCard extends StatelessWidget {
-  final double todayTotal;
-  final double monthTotal;
-  final NumberFormat currencyFormat;
+  final Map<AppCurrency, double> todayTotals;
+  final Map<AppCurrency, double> monthTotals;
 
   const SummaryCard({
     super.key,
-    required this.todayTotal,
-    required this.monthTotal,
-    required this.currencyFormat,
+    required this.todayTotals,
+    required this.monthTotals,
   });
 
   @override
@@ -35,18 +33,20 @@ class SummaryCard extends StatelessWidget {
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: _SummaryItem(
               icon: Icons.today_rounded,
               iconColor: const Color(0xFFFFB84C),
               label: 'Сегодня',
-              value: currencyFormat.format(todayTotal),
+              totals: todayTotals,
             ),
           ),
           Container(
             width: 1,
             height: 48,
+            margin: const EdgeInsets.only(top: 4),
             color: Colors.white.withValues(alpha: 0.15),
           ),
           Expanded(
@@ -54,7 +54,7 @@ class SummaryCard extends StatelessWidget {
               icon: Icons.calendar_month_rounded,
               iconColor: const Color(0xFF4ADEDE),
               label: 'За месяц',
-              value: currencyFormat.format(monthTotal),
+              totals: monthTotals,
             ),
           ),
         ],
@@ -67,17 +67,22 @@ class _SummaryItem extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String label;
-  final String value;
+  final Map<AppCurrency, double> totals;
 
   const _SummaryItem({
     required this.icon,
     required this.iconColor,
     required this.label,
-    required this.value,
+    required this.totals,
   });
 
   @override
   Widget build(BuildContext context) {
+    final entries = totals.entries.toList();
+    final values = entries.isEmpty
+        ? [AppCurrency.rub.format.format(0)]
+        : entries.map((e) => e.key.format.format(e.value)).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -99,16 +104,18 @@ class _SummaryItem extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
+        for (final value in values)
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
       ],
     );
   }

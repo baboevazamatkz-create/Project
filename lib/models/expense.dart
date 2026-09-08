@@ -1,3 +1,4 @@
+import 'currency.dart';
 import 'expense_category.dart';
 
 class Expense {
@@ -6,6 +7,7 @@ class Expense {
   final ExpenseCategory category;
   final String note;
   final DateTime date;
+  final AppCurrency currency;
 
   const Expense({
     required this.id,
@@ -13,6 +15,7 @@ class Expense {
     required this.category,
     required this.date,
     this.note = '',
+    this.currency = AppCurrency.rub,
   });
 
   Map<String, dynamic> toJson() => {
@@ -21,6 +24,7 @@ class Expense {
         'category': category.storageKey,
         'note': note,
         'date': date.toIso8601String(),
+        'currency': currency.storageKey,
       };
 
   factory Expense.fromJson(Map<String, dynamic> json) => Expense(
@@ -29,5 +33,6 @@ class Expense {
         category: ExpenseCategoryX.fromStorageKey(json['category'] as String),
         note: json['note'] as String? ?? '',
         date: DateTime.parse(json['date'] as String),
+        currency: AppCurrencyX.fromStorageKey(json['currency'] as String?),
       );
 }
