@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../widgets/add_expense_sheet.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/summary_card.dart';
+import 'stats_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String householdCode;
@@ -35,7 +36,8 @@ class _HomeScreenState extends State<HomeScreen> {
         content: const Text('Расход удалён'),
         action: SnackBarAction(
           label: 'Отменить',
-          onPressed: () => _repository.addExpense(widget.householdCode, expense),
+          onPressed: () =>
+              _repository.addExpense(widget.householdCode, expense),
         ),
       ),
     );
@@ -90,6 +92,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openStats(List<Expense> expenses) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => StatsScreen(expenses: expenses)),
+    );
+  }
+
   void _openAddExpenseSheet() {
     showModalBottomSheet(
       context: context,
@@ -108,7 +116,8 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     final totals = <AppCurrency, double>{};
     for (final expense in expenses.where(predicate)) {
-      totals[expense.currency] = (totals[expense.currency] ?? 0) + expense.amount;
+      totals[expense.currency] =
+          (totals[expense.currency] ?? 0) + expense.amount;
     }
     return totals;
   }
@@ -134,77 +143,83 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Расходы'),
-        actions: [
-          IconButton(
-            onPressed: _showHouseholdCode,
-            icon: const Icon(Icons.people_alt_outlined),
-            tooltip: 'Код бюджета',
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openAddExpenseSheet,
-        child: const Icon(Icons.add),
-      ),
-      body: StreamBuilder<List<Expense>>(
-        stream: _repository.watchExpenses(widget.householdCode),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final expenses = snapshot.data!;
-          return CustomScrollView(
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                sliver: SliverToBoxAdapter(
-                  child: SummaryCard(
-                    todayTotals: _todayTotals(expenses),
-                    monthTotals: _monthTotals(expenses),
-                  ),
-                ),
+    return StreamBuilder<List<Expense>>(
+      stream: _repository.watchExpenses(widget.householdCode),
+      builder: (context, snapshot) {
+        final expenses = snapshot.data ?? const <Expense>[];
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Расходы'),
+            actions: [
+              IconButton(
+                onPressed: () => _openStats(expenses),
+                icon: const Icon(Icons.pie_chart_rounded),
+                tooltip: 'По категориям',
               ),
-              if (expenses.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _EmptyState(),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                  sliver: SliverList.separated(
-                    itemCount: expenses.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final expense = expenses[index];
-                      return Dismissible(
-                        key: ValueKey(expense.id),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade400,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(Icons.delete_outline_rounded,
-                              color: Colors.white),
-                        ),
-                        onDismissed: (_) => _deleteExpense(expense),
-                        child: ExpenseTile(
-                          expense: expense,
-                        ),
-                      );
-                    },
-                  ),
-                ),
+              IconButton(
+                onPressed: _showHouseholdCode,
+                icon: const Icon(Icons.people_alt_outlined),
+                tooltip: 'Код бюджета',
+              ),
             ],
-          );
-        },
-      ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: _openAddExpenseSheet,
+            child: const Icon(Icons.add),
+          ),
+          body: !snapshot.hasData
+              ? const Center(child: CircularProgressIndicator())
+              : CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      sliver: SliverToBoxAdapter(
+                        child: SummaryCard(
+                          todayTotals: _todayTotals(expenses),
+                          monthTotals: _monthTotals(expenses),
+                        ),
+                      ),
+                    ),
+                    if (expenses.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _EmptyState(),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                        sliver: SliverList.separated(
+                          itemCount: expenses.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final expense = expenses[index];
+                            return Dismissible(
+                              key: ValueKey(expense.id),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 20),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade400,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Icon(Icons.delete_outline_rounded,
+                                    color: Colors.white),
+                              ),
+                              onDismissed: (_) => _deleteExpense(expense),
+                              child: ExpenseTile(
+                                expense: expense,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+        );
+      },
     );
   }
 }
@@ -221,7 +236,8 @@ class _EmptyState extends StatelessWidget {
             Icon(
               Icons.receipt_long_outlined,
               size: 56,
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 16),
             Text(
