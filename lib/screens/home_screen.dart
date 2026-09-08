@@ -182,7 +182,7 @@ class _EmptyState extends StatelessWidget {
             Icon(
               Icons.receipt_long_outlined,
               size: 56,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 16),
             Text(
@@ -194,7 +194,7 @@ class _EmptyState extends StatelessWidget {
                     .textTheme
                     .bodyMedium
                     ?.color
-                    ?.withOpacity(0.6),
+                    ?.withValues(alpha: 0.6),
               ),
             ),
           ],

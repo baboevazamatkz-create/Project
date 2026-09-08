@@ -26,7 +26,7 @@ class ExpenseTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
@@ -59,7 +59,7 @@ class ExpenseTile extends StatelessWidget {
                             .textTheme
                             .bodyMedium
                             ?.color
-                            ?.withOpacity(0.6),
+                            ?.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
@@ -86,7 +86,7 @@ class ExpenseTile extends StatelessWidget {
                         .textTheme
                         .bodyMedium
                         ?.color
-                        ?.withOpacity(0.5),
+                        ?.withValues(alpha: 0.5),
                   ),
                 ),
               ],

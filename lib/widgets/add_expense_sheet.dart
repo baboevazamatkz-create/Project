@@ -82,7 +82,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.4),
+                  color: Colors.grey.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -134,7 +134,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                   ),
                   selectedColor: Theme.of(context).colorScheme.primary,
                   backgroundColor:
-                      Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide.none,
