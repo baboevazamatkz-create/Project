@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/household_repository.dart';
+import '../data/household_settings_repository.dart';
+import '../models/currency.dart';
 import '../models/household.dart';
 import '../theme.dart';
 
@@ -22,6 +24,8 @@ class HouseholdScreen extends StatefulWidget {
 class _HouseholdScreenState extends State<HouseholdScreen> {
   final _labelController = TextEditingController();
   final _codeController = TextEditingController();
+  final _settingsRepository = HouseholdSettingsRepository();
+  AppCurrency _selectedCurrency = AppCurrency.rub;
   bool _busy = false;
   String? _labelError;
   String? _codeError;
@@ -46,6 +50,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
     if (!_validateLabel()) return;
     setState(() => _busy = true);
     final code = HouseholdRepository.generateCode();
+    await _settingsRepository.setCurrency(code, _selectedCurrency);
     if (!mounted) return;
     await _showCodeDialog(code);
     if (!mounted) return;
@@ -184,7 +189,20 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       }
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Валюта бюджета',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: _CurrencyPicker(
+                      selected: _selectedCurrency,
+                      onChanged: (currency) =>
+                          setState(() => _selectedCurrency = currency),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   SizedBox(
                     height: 52,
                     child: ElevatedButton.icon(
@@ -259,5 +277,53 @@ class UpperCaseTextFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     return newValue.copyWith(text: newValue.text.toUpperCase());
+  }
+}
+
+class _CurrencyPicker extends StatelessWidget {
+  final AppCurrency selected;
+  final ValueChanged<AppCurrency> onChanged;
+
+  const _CurrencyPicker({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).inputDecorationTheme.fillColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: AppCurrency.values.map((currency) {
+          final isSelected = currency == selected;
+          return GestureDetector(
+            onTap: () => onChanged(currency),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 64,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected ? kAccentColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${currency.symbol} ${currency.label}',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 }

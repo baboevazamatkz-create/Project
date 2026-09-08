@@ -6,15 +6,16 @@ import '../data/budget_repository.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
-import '../theme.dart';
 
 class StatsScreen extends StatefulWidget {
   final String householdCode;
+  final AppCurrency currency;
   final List<Expense> expenses;
 
   const StatsScreen({
     super.key,
     required this.householdCode,
+    required this.currency,
     required this.expenses,
   });
 
@@ -27,24 +28,16 @@ class _StatsScreenState extends State<StatsScreen>
   final _budgetRepository = BudgetRepository();
   late final TabController _tabController;
   late final List<Expense> _monthExpenses;
-  late final List<AppCurrency> _availableCurrencies;
-  late AppCurrency _selectedCurrency;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     final now = DateTime.now();
-    final monthlyExpensesOnly = widget.expenses.where((e) => !e.isIncome);
-    _monthExpenses = monthlyExpensesOnly
-        .where((e) => e.date.year == now.year && e.date.month == now.month)
+    _monthExpenses = widget.expenses
+        .where((e) =>
+            !e.isIncome && e.date.year == now.year && e.date.month == now.month)
         .toList();
-    final currenciesInUse = monthlyExpensesOnly.map((e) => e.currency).toSet();
-    _availableCurrencies =
-        AppCurrency.values.where(currenciesInUse.contains).toList();
-    _selectedCurrency = _availableCurrencies.isNotEmpty
-        ? _availableCurrencies.first
-        : AppCurrency.rub;
   }
 
   @override
@@ -55,8 +48,7 @@ class _StatsScreenState extends State<StatsScreen>
 
   Map<ExpenseCategory, double> get _categoryTotals {
     final totals = <ExpenseCategory, double>{};
-    for (final expense
-        in _monthExpenses.where((e) => e.currency == _selectedCurrency)) {
+    for (final expense in _monthExpenses) {
       final category = expense.category!;
       totals[category] = (totals[category] ?? 0) + expense.amount;
     }
@@ -68,8 +60,7 @@ class _StatsScreenState extends State<StatsScreen>
     final months =
         List.generate(6, (i) => DateTime(now.year, now.month - (5 - i)));
     final totals = {for (final m in months) m: 0.0};
-    for (final expense in widget.expenses
-        .where((e) => !e.isIncome && e.currency == _selectedCurrency)) {
+    for (final expense in widget.expenses.where((e) => !e.isIncome)) {
       final key = DateTime(expense.date.year, expense.date.month);
       if (totals.containsKey(key)) {
         totals[key] = totals[key]! + expense.amount;
@@ -93,7 +84,7 @@ class _StatsScreenState extends State<StatsScreen>
           autofocus: true,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
-            hintText: 'Сумма в месяц, ${_selectedCurrency.symbol}',
+            hintText: 'Сумма в месяц, ${widget.currency.symbol}',
           ),
         ),
         actions: [
@@ -116,12 +107,7 @@ class _StatsScreenState extends State<StatsScreen>
     if (result == null) return;
     final amount =
         result.isEmpty ? null : double.tryParse(result.replaceAll(',', '.'));
-    await _budgetRepository.setBudget(
-      widget.householdCode,
-      category,
-      _selectedCurrency,
-      amount,
-    );
+    await _budgetRepository.setBudget(widget.householdCode, category, amount);
   }
 
   @override
@@ -137,37 +123,21 @@ class _StatsScreenState extends State<StatsScreen>
           ],
         ),
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          if (_availableCurrencies.length > 1)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: _CurrencySelector(
-                currencies: _availableCurrencies,
-                selected: _selectedCurrency,
-                onChanged: (currency) =>
-                    setState(() => _selectedCurrency = currency),
-              ),
-            ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _CategoriesTab(
-                  entries: (_categoryTotals.entries.toList()
-                    ..sort((a, b) => b.value.compareTo(a.value))),
-                  currency: _selectedCurrency,
-                  householdCode: widget.householdCode,
-                  budgetRepository: _budgetRepository,
-                  onEditBudget: _editBudget,
-                ),
-                _HistoryTab(
-                  monthlyTotals: _monthlyTotals,
-                  currency: _selectedCurrency,
-                  monthLabel: _monthLabel,
-                ),
-              ],
-            ),
+          _CategoriesTab(
+            entries: (_categoryTotals.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value))),
+            currency: widget.currency,
+            householdCode: widget.householdCode,
+            budgetRepository: _budgetRepository,
+            onEditBudget: _editBudget,
+          ),
+          _HistoryTab(
+            monthlyTotals: _monthlyTotals,
+            currency: widget.currency,
+            monthLabel: _monthLabel,
           ),
         ],
       ),
@@ -219,7 +189,7 @@ class _CategoriesTab extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           children: [
             Text(
-              'За текущий месяц',
+              'За текущий месяц · ${currency.format.format(total)}',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -234,55 +204,27 @@ class _CategoriesTab extends StatelessWidget {
             const SizedBox(height: 20),
             SizedBox(
               height: 220,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  PieChart(
-                    PieChartData(
-                      sections: entries.map((entry) {
-                        final percent =
-                            total == 0 ? 0.0 : entry.value / total * 100;
-                        return PieChartSectionData(
-                          value: entry.value,
-                          color: entry.key.color,
-                          title: percent >= 6
-                              ? '${percent.toStringAsFixed(0)}%'
-                              : '',
-                          radius: 88,
-                          titleStyle: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
-                        );
-                      }).toList(),
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 52,
-                    ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Всего',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.color
-                              ?.withValues(alpha: 0.5),
-                        ),
+              child: PieChart(
+                PieChartData(
+                  sections: entries.map((entry) {
+                    final percent =
+                        total == 0 ? 0.0 : entry.value / total * 100;
+                    return PieChartSectionData(
+                      value: entry.value,
+                      color: entry.key.color,
+                      title:
+                          percent >= 6 ? '${percent.toStringAsFixed(0)}%' : '',
+                      radius: 88,
+                      titleStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        currency.format.format(total),
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
-                ],
+                    );
+                  }).toList(),
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 52,
+                ),
               ),
             ),
             const SizedBox(height: 28),
@@ -291,11 +233,10 @@ class _CategoriesTab extends StatelessWidget {
                 category: entry.key,
                 amount: entry.value,
                 currency: currency,
-                budget:
-                    budgetRepository.budgetFor(budgets, entry.key, currency),
+                budget: budgetRepository.budgetFor(budgets, entry.key),
                 onTap: () => onEditBudget(
                   entry.key,
-                  budgetRepository.budgetFor(budgets, entry.key, currency),
+                  budgetRepository.budgetFor(budgets, entry.key),
                 ),
               ),
           ],
@@ -401,6 +342,15 @@ class _HistoryTab extends StatelessWidget {
     required this.monthLabel,
   });
 
+  static const _lowColor = Color(0xFF3B82F6);
+  static const _highColor = Color(0xFFEF4444);
+
+  Color _colorForValue(double value, double maxValue) {
+    if (maxValue <= 0) return _lowColor;
+    final t = (value / maxValue).clamp(0.0, 1.0);
+    return Color.lerp(_lowColor, _highColor, t)!;
+  }
+
   @override
   Widget build(BuildContext context) {
     final maxValue =
@@ -480,7 +430,8 @@ class _HistoryTab extends StatelessWidget {
                       barRods: [
                         BarChartRodData(
                           toY: monthlyTotals[i].value,
-                          color: kAccentColor,
+                          color:
+                              _colorForValue(monthlyTotals[i].value, maxValue),
                           width: 22,
                           borderRadius: BorderRadius.circular(6),
                         ),
@@ -491,58 +442,6 @@ class _HistoryTab extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CurrencySelector extends StatelessWidget {
-  final List<AppCurrency> currencies;
-  final AppCurrency selected;
-  final ValueChanged<AppCurrency> onChanged;
-
-  const _CurrencySelector({
-    required this.currencies,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).inputDecorationTheme.fillColor,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: currencies.map((currency) {
-          final isSelected = currency == selected;
-          return GestureDetector(
-            onTap: () => onChanged(currency),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 44,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected ? kAccentColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                currency.symbol,
-                style: TextStyle(
-                  color: isSelected
-                      ? Colors.white
-                      : Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
       ),
     );
   }
