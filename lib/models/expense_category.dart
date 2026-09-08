@@ -49,6 +49,25 @@ extension ExpenseCategoryX on ExpenseCategory {
     }
   }
 
+  Color get color {
+    switch (this) {
+      case ExpenseCategory.food:
+        return const Color(0xFFFF8A5C);
+      case ExpenseCategory.transport:
+        return const Color(0xFF4C6FFF);
+      case ExpenseCategory.housing:
+        return const Color(0xFF9B59D9);
+      case ExpenseCategory.entertainment:
+        return const Color(0xFFEC4899);
+      case ExpenseCategory.health:
+        return const Color(0xFFEF4444);
+      case ExpenseCategory.shopping:
+        return const Color(0xFF14B8A6);
+      case ExpenseCategory.other:
+        return const Color(0xFF8B8FA3);
+    }
+  }
+
   String get storageKey => name;
 
   static ExpenseCategory fromStorageKey(String key) {
