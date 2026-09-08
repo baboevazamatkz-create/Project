@@ -10,13 +10,13 @@ const _incomeColor = Color(0xFF16A34A);
 class ExpenseTile extends StatelessWidget {
   final Expense expense;
   final AppCurrency currency;
-  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   const ExpenseTile({
     super.key,
     required this.expense,
     required this.currency,
-    this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -30,7 +30,7 @@ class ExpenseTile extends StatelessWidget {
 
     return Card(
       child: InkWell(
-        onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

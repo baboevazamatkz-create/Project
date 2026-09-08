@@ -270,7 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     child: ExpenseTile(
                                       expense: expense,
                                       currency: currency,
-                                      onTap: () => _openAddSheet(
+                                      onLongPress: () => _openAddSheet(
                                         expense.type,
                                         currency,
                                         existing: expense,
