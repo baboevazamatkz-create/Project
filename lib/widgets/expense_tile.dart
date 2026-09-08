@@ -9,11 +9,13 @@ const _incomeColor = Color(0xFF16A34A);
 
 class ExpenseTile extends StatelessWidget {
   final Expense expense;
+  final AppCurrency currency;
   final VoidCallback? onTap;
 
   const ExpenseTile({
     super.key,
     required this.expense,
+    required this.currency,
     this.onTap,
   });
 
@@ -83,7 +85,7 @@ class ExpenseTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '$sign${expense.currency.format.format(expense.amount)}',
+                    '$sign${currency.format.format(expense.amount)}',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,

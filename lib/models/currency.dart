@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 
-enum AppCurrency { rub, kzt }
+enum AppCurrency { rub, kzt, usd }
 
 extension AppCurrencyX on AppCurrency {
   String get symbol {
@@ -9,6 +9,8 @@ extension AppCurrencyX on AppCurrency {
         return '₽';
       case AppCurrency.kzt:
         return '₸';
+      case AppCurrency.usd:
+        return '\$';
     }
   }
 
@@ -18,6 +20,19 @@ extension AppCurrencyX on AppCurrency {
         return 'ru';
       case AppCurrency.kzt:
         return 'kk';
+      case AppCurrency.usd:
+        return 'en_US';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case AppCurrency.rub:
+        return 'Рубль';
+      case AppCurrency.kzt:
+        return 'Тенге';
+      case AppCurrency.usd:
+        return 'Доллар';
     }
   }
 

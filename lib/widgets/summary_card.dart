@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../models/currency.dart';
-import '../theme.dart';
 
 const _incomeColor = Color(0xFF6EE7A8);
+const _cardStart = Color(0xFF4D4D4D);
+const _cardEnd = Color(0xFF655C81);
 
 class SummaryCard extends StatelessWidget {
-  final Map<AppCurrency, double> todayExpenseTotals;
-  final Map<AppCurrency, double> todayIncomeTotals;
-  final Map<AppCurrency, double> monthExpenseTotals;
-  final Map<AppCurrency, double> monthIncomeTotals;
+  final double todayExpenseTotal;
+  final double todayIncomeTotal;
+  final double monthExpenseTotal;
+  final double monthIncomeTotal;
+  final AppCurrency currency;
 
   const SummaryCard({
     super.key,
-    required this.todayExpenseTotals,
-    required this.todayIncomeTotals,
-    required this.monthExpenseTotals,
-    required this.monthIncomeTotals,
+    required this.todayExpenseTotal,
+    required this.todayIncomeTotal,
+    required this.monthExpenseTotal,
+    required this.monthIncomeTotal,
+    required this.currency,
   });
 
   @override
@@ -27,12 +30,12 @@ class SummaryCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [kAccentColor, Color(0xFF4A3F6B)],
+          colors: [_cardStart, _cardEnd],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: kAccentColor.withValues(alpha: 0.3),
+            color: _cardStart.withValues(alpha: 0.25),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -43,11 +46,10 @@ class SummaryCard extends StatelessWidget {
         children: [
           Expanded(
             child: _SummaryItem(
-              icon: Icons.today_rounded,
-              iconColor: const Color(0xFFFFB84C),
               label: 'Сегодня',
-              expenseTotals: todayExpenseTotals,
-              incomeTotals: todayIncomeTotals,
+              expenseTotal: todayExpenseTotal,
+              incomeTotal: todayIncomeTotal,
+              currency: currency,
             ),
           ),
           Container(
@@ -58,11 +60,10 @@ class SummaryCard extends StatelessWidget {
           ),
           Expanded(
             child: _SummaryItem(
-              icon: Icons.calendar_month_rounded,
-              iconColor: const Color(0xFF4ADEDE),
               label: 'За месяц',
-              expenseTotals: monthExpenseTotals,
-              incomeTotals: monthIncomeTotals,
+              expenseTotal: monthExpenseTotal,
+              incomeTotal: monthIncomeTotal,
+              currency: currency,
             ),
           ),
         ],
@@ -72,39 +73,23 @@ class SummaryCard extends StatelessWidget {
 }
 
 class _SummaryItem extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
   final String label;
-  final Map<AppCurrency, double> expenseTotals;
-  final Map<AppCurrency, double> incomeTotals;
+  final double expenseTotal;
+  final double incomeTotal;
+  final AppCurrency currency;
 
   const _SummaryItem({
-    required this.icon,
-    required this.iconColor,
     required this.label,
-    required this.expenseTotals,
-    required this.incomeTotals,
+    required this.expenseTotal,
+    required this.incomeTotal,
+    required this.currency,
   });
 
   @override
   Widget build(BuildContext context) {
-    final currencies = AppCurrency.values
-        .where((c) => (expenseTotals[c] ?? 0) > 0 || (incomeTotals[c] ?? 0) > 0)
-        .toList();
-    if (currencies.isEmpty) currencies.add(AppCurrency.rub);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor, size: 18),
-        ),
-        const SizedBox(height: 8),
         Text(
           label,
           style: TextStyle(
@@ -113,34 +98,30 @@ class _SummaryItem extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 4),
-        for (final currency in currencies) ...[
+        const SizedBox(height: 6),
+        Text(
+          '${expenseTotal > 0 ? '−' : ''}${currency.format.format(expenseTotal)}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+        ),
+        if (incomeTotal > 0)
           Text(
-            '${(expenseTotals[currency] ?? 0) > 0 ? '−' : ''}'
-            '${currency.format.format(expenseTotals[currency] ?? 0)}',
+            '+${currency.format.format(incomeTotal)}',
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
+              color: _incomeColor,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
           ),
-          if ((incomeTotals[currency] ?? 0) > 0)
-            Text(
-              '+${currency.format.format(incomeTotals[currency]!)}',
-              style: const TextStyle(
-                color: _incomeColor,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          const SizedBox(height: 4),
-        ],
       ],
     );
   }

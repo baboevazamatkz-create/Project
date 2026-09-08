@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../data/expense_repository.dart';
+import '../data/household_settings_repository.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/household.dart';
 import '../models/transaction_type.dart';
 import '../widgets/add_expense_sheet.dart';
+import '../widgets/app_background_pattern.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/household_switcher_sheet.dart';
 import '../widgets/summary_card.dart';
@@ -31,6 +33,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _repository = ExpenseRepository();
+  final _settingsRepository = HouseholdSettingsRepository();
 
   Future<void> _addExpense(Expense expense) {
     return _repository.addExpense(widget.household.code, expense);
@@ -69,18 +72,54 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openStats(List<Expense> expenses) {
+  Future<void> _confirmClearAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Очистить бюджет?'),
+        content: Text(
+          'Все расходы и доходы в бюджете «${widget.household.label}» '
+          'будут удалены безвозвратно. Это действие нельзя отменить.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style:
+                ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Очистить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _settingsRepository.clearAllExpenses(widget.household.code);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Бюджет очищен')),
+    );
+  }
+
+  void _openStats(List<Expense> expenses, AppCurrency currency) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => StatsScreen(
           householdCode: widget.household.code,
+          currency: currency,
           expenses: expenses,
         ),
       ),
     );
   }
 
-  void _openAddSheet(TransactionType type, {Expense? existing}) {
+  void _openAddSheet(
+    TransactionType type,
+    AppCurrency currency, {
+    Expense? existing,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -90,154 +129,162 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       builder: (context) => AddExpenseSheet(
         type: type,
+        currency: currency,
         existing: existing,
         onSubmit: _addExpense,
       ),
     );
   }
 
-  Map<AppCurrency, double> _totalsBy(
-    List<Expense> expenses,
-    bool Function(Expense) predicate,
-  ) {
-    final totals = <AppCurrency, double>{};
-    for (final expense in expenses.where(predicate)) {
-      totals[expense.currency] =
-          (totals[expense.currency] ?? 0) + expense.amount;
-    }
-    return totals;
-  }
-
-  Map<AppCurrency, double> _totalsFor(
+  double _totalFor(
     List<Expense> expenses, {
     required bool sameDay,
     required bool isIncome,
   }) {
     final now = DateTime.now();
-    return _totalsBy(
-      expenses,
-      (e) =>
-          e.isIncome == isIncome &&
-          e.date.year == now.year &&
-          e.date.month == now.month &&
-          (!sameDay || e.date.day == now.day),
-    );
+    return expenses
+        .where((e) =>
+            e.isIncome == isIncome &&
+            e.date.year == now.year &&
+            e.date.month == now.month &&
+            (!sameDay || e.date.day == now.day))
+        .fold(0.0, (sum, e) => sum + e.amount);
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Expense>>(
-      stream: _repository.watchExpenses(widget.household.code),
-      builder: (context, snapshot) {
-        final expenses = snapshot.data ?? const <Expense>[];
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(widget.household.label),
-            actions: [
-              IconButton(
-                onPressed: () => _openStats(expenses),
-                icon: const Icon(Icons.pie_chart_rounded),
-                tooltip: 'По категориям',
+    return StreamBuilder<AppCurrency>(
+      stream: _settingsRepository.watchCurrency(widget.household.code),
+      builder: (context, currencySnapshot) {
+        final currency = currencySnapshot.data ?? AppCurrency.rub;
+        return StreamBuilder<List<Expense>>(
+          stream: _repository.watchExpenses(widget.household.code),
+          builder: (context, snapshot) {
+            final expenses = snapshot.data ?? const <Expense>[];
+            return Scaffold(
+              appBar: AppBar(
+                title: Text(widget.household.label),
+                actions: [
+                  IconButton(
+                    onPressed: () => _openStats(expenses, currency),
+                    icon: const Icon(Icons.pie_chart_rounded),
+                    tooltip: 'По категориям',
+                  ),
+                  IconButton(
+                    onPressed: _showHouseholdSwitcher,
+                    icon: const Icon(Icons.people_alt_outlined),
+                    tooltip: 'Мои бюджеты',
+                  ),
+                  IconButton(
+                    onPressed: _confirmClearAll,
+                    icon: const Icon(Icons.delete_sweep_outlined),
+                    tooltip: 'Очистить бюджет',
+                  ),
+                ],
               ),
-              IconButton(
-                onPressed: _showHouseholdSwitcher,
-                icon: const Icon(Icons.people_alt_outlined),
-                tooltip: 'Мои бюджеты',
+              floatingActionButton: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FloatingActionButton(
+                    heroTag: 'add_income',
+                    backgroundColor: Colors.green.shade600,
+                    onPressed: () =>
+                        _openAddSheet(TransactionType.income, currency),
+                    tooltip: 'Добавить доход',
+                    child: const Icon(Icons.add),
+                  ),
+                  const SizedBox(width: 14),
+                  FloatingActionButton(
+                    heroTag: 'add_expense',
+                    onPressed: () =>
+                        _openAddSheet(TransactionType.expense, currency),
+                    tooltip: 'Добавить расход',
+                    child: const Icon(Icons.remove),
+                  ),
+                ],
               ),
-            ],
-          ),
-          floatingActionButton: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FloatingActionButton(
-                heroTag: 'add_income',
-                backgroundColor: Colors.green.shade600,
-                onPressed: () => _openAddSheet(TransactionType.income),
-                tooltip: 'Добавить доход',
-                child: const Icon(Icons.add),
-              ),
-              const SizedBox(width: 14),
-              FloatingActionButton(
-                heroTag: 'add_expense',
-                onPressed: () => _openAddSheet(TransactionType.expense),
-                tooltip: 'Добавить расход',
-                child: const Icon(Icons.remove),
-              ),
-            ],
-          ),
-          body: !snapshot.hasData
-              ? const Center(child: CircularProgressIndicator())
-              : CustomScrollView(
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      sliver: SliverToBoxAdapter(
-                        child: SummaryCard(
-                          todayExpenseTotals: _totalsFor(
-                            expenses,
-                            sameDay: true,
-                            isIncome: false,
-                          ),
-                          todayIncomeTotals: _totalsFor(
-                            expenses,
-                            sameDay: true,
-                            isIncome: true,
-                          ),
-                          monthExpenseTotals: _totalsFor(
-                            expenses,
-                            sameDay: false,
-                            isIncome: false,
-                          ),
-                          monthIncomeTotals: _totalsFor(
-                            expenses,
-                            sameDay: false,
-                            isIncome: true,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (expenses.isEmpty)
-                      SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: _EmptyState(),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                        sliver: SliverList.separated(
-                          itemCount: expenses.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (context, index) {
-                            final expense = expenses[index];
-                            return Dismissible(
-                              key: ValueKey(expense.id),
-                              direction: DismissDirection.endToStart,
-                              background: Container(
-                                alignment: Alignment.centerRight,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 20),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade400,
-                                  borderRadius: BorderRadius.circular(20),
+              body: AppBackgroundPattern(
+                child: !snapshot.hasData
+                    ? const Center(child: CircularProgressIndicator())
+                    : CustomScrollView(
+                        slivers: [
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                            sliver: SliverToBoxAdapter(
+                              child: SummaryCard(
+                                todayExpenseTotal: _totalFor(
+                                  expenses,
+                                  sameDay: true,
+                                  isIncome: false,
                                 ),
-                                child: const Icon(Icons.delete_outline_rounded,
-                                    color: Colors.white),
-                              ),
-                              onDismissed: (_) => _deleteExpense(expense),
-                              child: ExpenseTile(
-                                expense: expense,
-                                onTap: () => _openAddSheet(
-                                  expense.type,
-                                  existing: expense,
+                                todayIncomeTotal: _totalFor(
+                                  expenses,
+                                  sameDay: true,
+                                  isIncome: true,
                                 ),
+                                monthExpenseTotal: _totalFor(
+                                  expenses,
+                                  sameDay: false,
+                                  isIncome: false,
+                                ),
+                                monthIncomeTotal: _totalFor(
+                                  expenses,
+                                  sameDay: false,
+                                  isIncome: true,
+                                ),
+                                currency: currency,
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          ),
+                          if (expenses.isEmpty)
+                            SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: _EmptyState(),
+                            )
+                          else
+                            SliverPadding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                              sliver: SliverList.separated(
+                                itemCount: expenses.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 10),
+                                itemBuilder: (context, index) {
+                                  final expense = expenses[index];
+                                  return Dismissible(
+                                    key: ValueKey(expense.id),
+                                    direction: DismissDirection.endToStart,
+                                    background: Container(
+                                      alignment: Alignment.centerRight,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade400,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          color: Colors.white),
+                                    ),
+                                    onDismissed: (_) => _deleteExpense(expense),
+                                    child: ExpenseTile(
+                                      expense: expense,
+                                      currency: currency,
+                                      onTap: () => _openAddSheet(
+                                        expense.type,
+                                        currency,
+                                        existing: expense,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
+              ),
+            );
+          },
         );
       },
     );
