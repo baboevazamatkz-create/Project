@@ -11,10 +11,15 @@ import '../theme.dart';
 
 class AddExpenseSheet extends StatefulWidget {
   final TransactionType type;
+  final Expense? existing;
   final void Function(Expense expense) onSubmit;
 
-  const AddExpenseSheet(
-      {super.key, required this.type, required this.onSubmit});
+  const AddExpenseSheet({
+    super.key,
+    required this.type,
+    this.existing,
+    required this.onSubmit,
+  });
 
   @override
   State<AddExpenseSheet> createState() => _AddExpenseSheetState();
@@ -29,10 +34,24 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
   DateTime _selectedDate = DateTime.now();
   String? _errorText;
 
+  bool get _isEditing => widget.existing != null;
+
   @override
   void initState() {
     super.initState();
-    _loadLastCurrency();
+    final existing = widget.existing;
+    if (existing != null) {
+      _amountController.text =
+          existing.amount == existing.amount.roundToDouble()
+              ? existing.amount.toInt().toString()
+              : existing.amount.toString();
+      _selectedCategory = existing.category ?? ExpenseCategory.food;
+      _selectedCurrency = existing.currency;
+      _selectedDate = existing.date;
+      _noteController.text = existing.note;
+    } else {
+      _loadLastCurrency();
+    }
   }
 
   Future<void> _loadLastCurrency() async {
@@ -71,7 +90,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
     widget.onSubmit(
       Expense(
-        id: const Uuid().v4(),
+        id: widget.existing?.id ?? const Uuid().v4(),
         amount: amount,
         category:
             widget.type == TransactionType.expense ? _selectedCategory : null,
@@ -81,7 +100,9 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
         type: widget.type,
       ),
     );
-    _settingsRepository.saveLastCurrency(_selectedCurrency);
+    if (!_isEditing) {
+      _settingsRepository.saveLastCurrency(_selectedCurrency);
+    }
     Navigator.of(context).pop();
   }
 
@@ -113,9 +134,13 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               ),
             ),
             Text(
-              widget.type == TransactionType.expense
-                  ? 'Новый расход'
-                  : 'Новый доход',
+              _isEditing
+                  ? (widget.type == TransactionType.expense
+                      ? 'Изменить расход'
+                      : 'Изменить доход')
+                  : (widget.type == TransactionType.expense
+                      ? 'Новый расход'
+                      : 'Новый доход'),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 20),
@@ -224,7 +249,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                         backgroundColor: Colors.green.shade600)
                     : null,
                 onPressed: _submit,
-                child: const Text('Добавить'),
+                child: Text(_isEditing ? 'Сохранить' : 'Добавить'),
               ),
             ),
           ],

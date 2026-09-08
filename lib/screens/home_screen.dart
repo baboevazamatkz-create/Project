@@ -71,11 +71,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openStats(List<Expense> expenses) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => StatsScreen(expenses: expenses)),
+      MaterialPageRoute(
+        builder: (context) => StatsScreen(
+          householdCode: widget.household.code,
+          expenses: expenses,
+        ),
+      ),
     );
   }
 
-  void _openAddSheet(TransactionType type) {
+  void _openAddSheet(TransactionType type, {Expense? existing}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -83,7 +88,11 @@ class _HomeScreenState extends State<HomeScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => AddExpenseSheet(type: type, onSubmit: _addExpense),
+      builder: (context) => AddExpenseSheet(
+        type: type,
+        existing: existing,
+        onSubmit: _addExpense,
+      ),
     );
   }
 
@@ -218,6 +227,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               onDismissed: (_) => _deleteExpense(expense),
                               child: ExpenseTile(
                                 expense: expense,
+                                onTap: () => _openAddSheet(
+                                  expense.type,
+                                  existing: expense,
+                                ),
                               ),
                             );
                           },
