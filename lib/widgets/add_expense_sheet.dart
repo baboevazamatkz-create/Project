@@ -123,18 +123,15 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                   avatar: Icon(
                     category.icon,
                     size: 18,
-                    color: selected
-                        ? Colors.white
-                        : Theme.of(context).colorScheme.primary,
+                    color: selected ? Colors.white : category.color,
                   ),
                   label: Text(category.label),
                   labelStyle: TextStyle(
-                    color: selected ? Colors.white : null,
+                    color: selected ? Colors.white : category.color,
                     fontWeight: FontWeight.w600,
                   ),
-                  selectedColor: Theme.of(context).colorScheme.primary,
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                  selectedColor: category.color,
+                  backgroundColor: category.color.withValues(alpha: 0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide.none,

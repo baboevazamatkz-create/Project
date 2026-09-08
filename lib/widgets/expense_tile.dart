@@ -26,12 +26,12 @@ class ExpenseTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                color: expense.category.color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 expense.category.icon,
-                color: Theme.of(context).colorScheme.primary,
+                color: expense.category.color,
                 size: 22,
               ),
             ),
