@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
@@ -6,6 +7,48 @@ import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
 import '../models/transaction_type.dart';
+
+String _groupThousands(String digits) {
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(' ');
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}
+
+class _ThousandsSeparatorFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) return newValue;
+
+    final cleaned = newValue.text.replaceAll(RegExp(r'[^\d.,]'), '');
+    final separatorMatch = RegExp(r'[.,]').firstMatch(cleaned);
+
+    String integerPart;
+    var separator = '';
+    var decimalPart = '';
+    if (separatorMatch != null) {
+      integerPart = cleaned.substring(0, separatorMatch.start);
+      separator = cleaned[separatorMatch.start];
+      decimalPart = cleaned
+          .substring(separatorMatch.start + 1)
+          .replaceAll(RegExp(r'[.,]'), '');
+    } else {
+      integerPart = cleaned;
+    }
+    integerPart = integerPart.replaceAll(RegExp(r'[^\d]'), '');
+
+    final result = '${_groupThousands(integerPart)}$separator$decimalPart';
+    return TextEditingValue(
+      text: result,
+      selection: TextSelection.collapsed(offset: result.length),
+    );
+  }
+}
 
 class AddExpenseSheet extends StatefulWidget {
   final TransactionType type;
@@ -39,10 +82,13 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
     super.initState();
     final existing = widget.existing;
     if (existing != null) {
-      _amountController.text =
-          existing.amount == existing.amount.roundToDouble()
-              ? existing.amount.toInt().toString()
-              : existing.amount.toString();
+      final rawAmount = existing.amount == existing.amount.roundToDouble()
+          ? existing.amount.toInt().toString()
+          : existing.amount.toString();
+      final dotIndex = rawAmount.indexOf('.');
+      _amountController.text = dotIndex == -1
+          ? _groupThousands(rawAmount)
+          : '${_groupThousands(rawAmount.substring(0, dotIndex))}${rawAmount.substring(dotIndex)}';
       _selectedCategory = existing.category ?? ExpenseCategory.food;
       _selectedDate = existing.date;
       _noteController.text = existing.note;
@@ -70,7 +116,8 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
   }
 
   void _submit() {
-    final amountText = _amountController.text.replaceAll(',', '.').trim();
+    final amountText =
+        _amountController.text.replaceAll(' ', '').replaceAll(',', '.').trim();
     final amount = double.tryParse(amountText);
     if (amount == null || amount <= 0) {
       setState(() => _errorText = 'Введите корректную сумму');
@@ -134,6 +181,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               controller: _amountController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [_ThousandsSeparatorFormatter()],
               autofocus: true,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               decoration: InputDecoration(
@@ -185,7 +233,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
             TextField(
               controller: _noteController,
               decoration: const InputDecoration(
-                hintText: 'Заметка (необязательно)',
+                hintText: 'Заметка',
                 prefixIcon: Icon(Icons.edit_note_rounded),
               ),
             ),

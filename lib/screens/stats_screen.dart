@@ -189,7 +189,7 @@ class _CategoriesTab extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           children: [
             Text(
-              'За текущий месяц · ${currency.format.format(total)}',
+              'За текущий месяц',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -203,28 +203,58 @@ class _CategoriesTab extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             SizedBox(
-              height: 240,
-              child: PieChart(
-                PieChartData(
-                  sections: entries.map((entry) {
-                    final percent =
-                        total == 0 ? 0.0 : entry.value / total * 100;
-                    return PieChartSectionData(
-                      value: entry.value,
-                      color: entry.key.color,
-                      title:
-                          percent >= 6 ? '${percent.toStringAsFixed(0)}%' : '',
-                      radius: 76,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
+              height: 300,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  PieChart(
+                    PieChartData(
+                      sections: entries.map((entry) {
+                        final percent =
+                            total == 0 ? 0.0 : entry.value / total * 100;
+                        return PieChartSectionData(
+                          value: entry.value,
+                          color: entry.key.color,
+                          title: percent >= 6
+                              ? '${percent.toStringAsFixed(0)}%'
+                              : '',
+                          radius: 88,
+                          titleStyle: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        );
+                      }).toList(),
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 52,
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Всего',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.color
+                              ?.withValues(alpha: 0.5),
+                        ),
                       ),
-                    );
-                  }).toList(),
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 36,
-                ),
+                      const SizedBox(height: 2),
+                      Text(
+                        currency.format.format(total),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 28),

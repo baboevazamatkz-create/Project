@@ -166,6 +166,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: Text(widget.household.label),
                 actions: [
                   IconButton(
+                    onPressed: _confirmClearAll,
+                    icon: const Icon(Icons.delete_sweep_outlined),
+                    tooltip: 'Очистить бюджет',
+                  ),
+                  IconButton(
                     onPressed: () => _openStats(expenses, currency),
                     icon: const Icon(Icons.pie_chart_rounded),
                     tooltip: 'По категориям',
@@ -174,11 +179,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     onPressed: _showHouseholdSwitcher,
                     icon: const Icon(Icons.people_alt_outlined),
                     tooltip: 'Мои бюджеты',
-                  ),
-                  IconButton(
-                    onPressed: _confirmClearAll,
-                    icon: const Icon(Icons.delete_sweep_outlined),
-                    tooltip: 'Очистить бюджет',
                   ),
                 ],
               ),
@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     : CustomScrollView(
                         slivers: [
                           SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                            padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
                             sliver: SliverToBoxAdapter(
                               child: SummaryCard(
                                 todayExpenseTotal: _totalFor(
@@ -244,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           else
                             SliverPadding(
                               padding:
-                                  const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                                  const EdgeInsets.fromLTRB(24, 8, 24, 100),
                               sliver: SliverList.separated(
                                 itemCount: expenses.length,
                                 separatorBuilder: (_, __) =>
