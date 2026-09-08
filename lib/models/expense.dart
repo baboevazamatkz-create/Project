@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'currency.dart';
 import 'expense_category.dart';
 
@@ -23,7 +25,7 @@ class Expense {
         'amount': amount,
         'category': category.storageKey,
         'note': note,
-        'date': date.toIso8601String(),
+        'date': Timestamp.fromDate(date),
         'currency': currency.storageKey,
       };
 
@@ -32,7 +34,7 @@ class Expense {
         amount: (json['amount'] as num).toDouble(),
         category: ExpenseCategoryX.fromStorageKey(json['category'] as String),
         note: json['note'] as String? ?? '',
-        date: DateTime.parse(json['date'] as String),
+        date: (json['date'] as Timestamp).toDate(),
         currency: AppCurrencyX.fromStorageKey(json['currency'] as String?),
       );
 }

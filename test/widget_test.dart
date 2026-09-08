@@ -1,14 +1,19 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:expense_tracker/main.dart';
+import 'package:expense_tracker/screens/household_screen.dart';
 
 void main() {
-  testWidgets('App renders home screen with title', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const ExpenseTrackerApp());
-    await tester.pumpAndSettle();
+  testWidgets('Household screen offers create and join actions',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HouseholdScreen(onReady: (_) {}),
+      ),
+    );
 
-    expect(find.text('Расходы'), findsOneWidget);
+    expect(find.text('Семейный бюджет'), findsOneWidget);
+    expect(find.text('Создать новый бюджет'), findsOneWidget);
+    expect(find.text('Присоединиться по коду'), findsOneWidget);
   });
 }

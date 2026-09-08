@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 
 import '../data/settings_repository.dart';
 import '../models/currency.dart';
@@ -67,7 +68,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
     widget.onSubmit(
       Expense(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        id: const Uuid().v4(),
         amount: amount,
         category: _selectedCategory,
         note: _noteController.text.trim(),
