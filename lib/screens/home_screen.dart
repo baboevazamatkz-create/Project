@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../data/expense_repository.dart';
+import '../models/currency.dart';
 import '../models/expense.dart';
 import '../widgets/add_expense_sheet.dart';
 import '../widgets/expense_tile.dart';
@@ -16,11 +16,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _repository = ExpenseRepository();
-  final _currencyFormat = NumberFormat.currency(
-    locale: 'ru',
-    symbol: '₽',
-    decimalDigits: 0,
-  );
 
   List<Expense> _expenses = [];
   bool _loading = true;
@@ -87,21 +82,25 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  double get _todayTotal {
-    final now = DateTime.now();
-    return _expenses
-        .where((e) =>
-            e.date.year == now.year &&
-            e.date.month == now.month &&
-            e.date.day == now.day)
-        .fold(0.0, (sum, e) => sum + e.amount);
+  Map<AppCurrency, double> _totalsBy(bool Function(Expense) predicate) {
+    final totals = <AppCurrency, double>{};
+    for (final expense in _expenses.where(predicate)) {
+      totals[expense.currency] = (totals[expense.currency] ?? 0) + expense.amount;
+    }
+    return totals;
   }
 
-  double get _monthTotal {
+  Map<AppCurrency, double> get _todayTotals {
     final now = DateTime.now();
-    return _expenses
-        .where((e) => e.date.year == now.year && e.date.month == now.month)
-        .fold(0.0, (sum, e) => sum + e.amount);
+    return _totalsBy((e) =>
+        e.date.year == now.year &&
+        e.date.month == now.month &&
+        e.date.day == now.day);
+  }
+
+  Map<AppCurrency, double> get _monthTotals {
+    final now = DateTime.now();
+    return _totalsBy((e) => e.date.year == now.year && e.date.month == now.month);
   }
 
   @override
@@ -122,9 +121,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                     sliver: SliverToBoxAdapter(
                       child: SummaryCard(
-                        todayTotal: _todayTotal,
-                        monthTotal: _monthTotal,
-                        currencyFormat: _currencyFormat,
+                        todayTotals: _todayTotals,
+                        monthTotals: _monthTotals,
                       ),
                     ),
                   ),
@@ -157,7 +155,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             onDismissed: (_) => _deleteExpense(expense),
                             child: ExpenseTile(
                               expense: expense,
-                              currencyFormat: _currencyFormat,
                             ),
                           );
                         },

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../data/settings_repository.dart';
+import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
+import '../theme.dart';
 
 class AddExpenseSheet extends StatefulWidget {
   final void Function(Expense expense) onSubmit;
@@ -16,9 +19,23 @@ class AddExpenseSheet extends StatefulWidget {
 class _AddExpenseSheetState extends State<AddExpenseSheet> {
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
+  final _settingsRepository = SettingsRepository();
   ExpenseCategory _selectedCategory = ExpenseCategory.food;
+  AppCurrency _selectedCurrency = AppCurrency.rub;
   DateTime _selectedDate = DateTime.now();
   String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastCurrency();
+  }
+
+  Future<void> _loadLastCurrency() async {
+    final currency = await _settingsRepository.loadLastCurrency();
+    if (!mounted) return;
+    setState(() => _selectedCurrency = currency);
+  }
 
   @override
   void dispose() {
@@ -55,8 +72,10 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
         category: _selectedCategory,
         note: _noteController.text.trim(),
         date: _selectedDate,
+        currency: _selectedCurrency,
       ),
     );
+    _settingsRepository.saveLastCurrency(_selectedCurrency);
     Navigator.of(context).pop();
   }
 
@@ -92,19 +111,34 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 20),
-            TextField(
-              controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              autofocus: true,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              decoration: InputDecoration(
-                hintText: 'Сумма',
-                errorText: _errorText,
-                prefixIcon: const Icon(Icons.payments_outlined),
-              ),
-              onChanged: (_) {
-                if (_errorText != null) setState(() => _errorText = null);
-              },
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _amountController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    autofocus: true,
+                    style:
+                        const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      hintText: 'Сумма',
+                      errorText: _errorText,
+                      prefixIcon: const Icon(Icons.payments_outlined),
+                    ),
+                    onChanged: (_) {
+                      if (_errorText != null) setState(() => _errorText = null);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _CurrencyToggle(
+                  selected: _selectedCurrency,
+                  onChanged: (currency) =>
+                      setState(() => _selectedCurrency = currency),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             const Text(
@@ -179,6 +213,53 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CurrencyToggle extends StatelessWidget {
+  final AppCurrency selected;
+  final ValueChanged<AppCurrency> onChanged;
+
+  const _CurrencyToggle({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).inputDecorationTheme.fillColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: AppCurrency.values.map((currency) {
+          final isSelected = currency == selected;
+          return GestureDetector(
+            onTap: () => onChanged(currency),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected ? kAccentColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                currency.symbol,
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

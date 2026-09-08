@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
 
 class ExpenseTile extends StatelessWidget {
   final Expense expense;
-  final NumberFormat currencyFormat;
 
   const ExpenseTile({
     super.key,
     required this.expense,
-    required this.currencyFormat,
   });
 
   @override
@@ -71,7 +70,7 @@ class ExpenseTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  currencyFormat.format(expense.amount),
+                  expense.currency.format.format(expense.amount),
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
