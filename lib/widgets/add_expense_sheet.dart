@@ -6,12 +6,15 @@ import '../data/settings_repository.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
+import '../models/transaction_type.dart';
 import '../theme.dart';
 
 class AddExpenseSheet extends StatefulWidget {
+  final TransactionType type;
   final void Function(Expense expense) onSubmit;
 
-  const AddExpenseSheet({super.key, required this.onSubmit});
+  const AddExpenseSheet(
+      {super.key, required this.type, required this.onSubmit});
 
   @override
   State<AddExpenseSheet> createState() => _AddExpenseSheetState();
@@ -70,10 +73,12 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
       Expense(
         id: const Uuid().v4(),
         amount: amount,
-        category: _selectedCategory,
+        category:
+            widget.type == TransactionType.expense ? _selectedCategory : null,
         note: _noteController.text.trim(),
         date: _selectedDate,
         currency: _selectedCurrency,
+        type: widget.type,
       ),
     );
     _settingsRepository.saveLastCurrency(_selectedCurrency);
@@ -107,9 +112,11 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                 ),
               ),
             ),
-            const Text(
-              'Новый расход',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            Text(
+              widget.type == TransactionType.expense
+                  ? 'Новый расход'
+                  : 'Новый доход',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 20),
             Row(
@@ -121,8 +128,8 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                     autofocus: true,
-                    style:
-                        const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w600),
                     decoration: InputDecoration(
                       hintText: 'Сумма',
                       errorText: _errorText,
@@ -141,39 +148,42 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Категория',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: ExpenseCategory.values.map((category) {
-                final selected = category == _selectedCategory;
-                return ChoiceChip(
-                  selected: selected,
-                  onSelected: (_) => setState(() => _selectedCategory = category),
-                  avatar: Icon(
-                    category.icon,
-                    size: 18,
-                    color: selected ? Colors.white : category.color,
-                  ),
-                  label: Text(category.label),
-                  labelStyle: TextStyle(
-                    color: selected ? Colors.white : category.color,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  selectedColor: category.color,
-                  backgroundColor: category.color.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide.none,
-                  ),
-                );
-              }).toList(),
-            ),
+            if (widget.type == TransactionType.expense) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Категория',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: ExpenseCategory.values.map((category) {
+                  final selected = category == _selectedCategory;
+                  return ChoiceChip(
+                    selected: selected,
+                    onSelected: (_) =>
+                        setState(() => _selectedCategory = category),
+                    avatar: Icon(
+                      category.icon,
+                      size: 18,
+                      color: selected ? Colors.white : category.color,
+                    ),
+                    label: Text(category.label),
+                    labelStyle: TextStyle(
+                      color: selected ? Colors.white : category.color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    selectedColor: category.color,
+                    backgroundColor: category.color.withValues(alpha: 0.1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide.none,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: _noteController,
@@ -187,7 +197,8 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               borderRadius: BorderRadius.circular(14),
               onTap: _pickDate,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: Theme.of(context).inputDecorationTheme.fillColor,
                   borderRadius: BorderRadius.circular(14),
@@ -208,6 +219,10 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
+                style: widget.type == TransactionType.income
+                    ? ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600)
+                    : null,
                 onPressed: _submit,
                 child: const Text('Добавить'),
               ),

@@ -25,7 +25,8 @@ class _StatsScreenState extends State<StatsScreen> {
     super.initState();
     final now = DateTime.now();
     _monthExpenses = widget.expenses
-        .where((e) => e.date.year == now.year && e.date.month == now.month)
+        .where((e) =>
+            !e.isIncome && e.date.year == now.year && e.date.month == now.month)
         .toList();
     _availableCurrencies = AppCurrency.values
         .where((c) => _monthExpenses.any((e) => e.currency == c))
@@ -39,8 +40,8 @@ class _StatsScreenState extends State<StatsScreen> {
     final totals = <ExpenseCategory, double>{};
     for (final expense
         in _monthExpenses.where((e) => e.currency == _selectedCurrency)) {
-      totals[expense.category] =
-          (totals[expense.category] ?? 0) + expense.amount;
+      final category = expense.category!;
+      totals[category] = (totals[category] ?? 0) + expense.amount;
     }
     return totals;
   }

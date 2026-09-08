@@ -5,6 +5,8 @@ import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
 
+const _incomeColor = Color(0xFF16A34A);
+
 class ExpenseTile extends StatelessWidget {
   final Expense expense;
 
@@ -16,6 +18,12 @@ class ExpenseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('d MMM', 'ru');
+    final isIncome = expense.isIncome;
+    final color = isIncome ? _incomeColor : expense.category!.color;
+    final icon = isIncome ? Icons.arrow_upward_rounded : expense.category!.icon;
+    final title = isIncome ? 'Доход' : expense.category!.label;
+    final sign = isIncome ? '+' : '−';
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -25,12 +33,12 @@ class ExpenseTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: expense.category.color.withValues(alpha: 0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
-                expense.category.icon,
-                color: expense.category.color,
+                icon,
+                color: color,
                 size: 22,
               ),
             ),
@@ -40,7 +48,7 @@ class ExpenseTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    expense.category.label,
+                    title,
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -70,10 +78,11 @@ class ExpenseTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  expense.currency.format.format(expense.amount),
-                  style: const TextStyle(
+                  '$sign${expense.currency.format.format(expense.amount)}',
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
+                    color: isIncome ? _incomeColor : null,
                   ),
                 ),
                 const SizedBox(height: 2),

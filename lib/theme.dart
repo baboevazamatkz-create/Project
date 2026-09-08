@@ -14,9 +14,11 @@ ThemeData buildAppTheme(Brightness brightness) {
     useMaterial3: true,
     brightness: brightness,
     colorScheme: colorScheme,
-    scaffoldBackgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
+    scaffoldBackgroundColor:
+        isDark ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
     appBarTheme: AppBarTheme(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
+      backgroundColor:
+          isDark ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
       foregroundColor: isDark ? Colors.white : kAccentColor,
       elevation: 0,
       centerTitle: false,
@@ -36,12 +38,11 @@ ThemeData buildAppTheme(Brightness brightness) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       margin: EdgeInsets.zero,
     ),
-    textTheme: Typography.material2021(platform: TargetPlatform.android)
-        .black
-        .apply(
-          bodyColor: isDark ? Colors.white : const Color(0xFF1A1A1A),
-          displayColor: isDark ? Colors.white : const Color(0xFF1A1A1A),
-        ),
+    textTheme:
+        Typography.material2021(platform: TargetPlatform.android).black.apply(
+              bodyColor: isDark ? Colors.white : const Color(0xFF1A1A1A),
+              displayColor: isDark ? Colors.white : const Color(0xFF1A1A1A),
+            ),
     dividerTheme: DividerThemeData(
       color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
       thickness: 1,
