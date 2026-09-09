@@ -22,6 +22,15 @@ class HouseholdSettingsRepository {
         .set({'currency': currency.storageKey}, SetOptions(merge: true));
   }
 
+  Future<void> setLabel(String householdCode, String label) {
+    return _doc(householdCode).set({'label': label}, SetOptions(merge: true));
+  }
+
+  Future<String?> fetchLabel(String householdCode) async {
+    final snapshot = await _doc(householdCode).get();
+    return snapshot.data()?['label'] as String?;
+  }
+
   Future<void> clearAllExpenses(String householdCode) async {
     final collection = _firestore
         .collection('households')
