@@ -90,12 +90,11 @@ class _HouseholdRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = accentForeground(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: isActive
-            ? kAccentColor.withValues(alpha: 0.08)
-            : Colors.transparent,
+        color: isActive ? accent.withValues(alpha: 0.08) : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -109,12 +108,12 @@ class _HouseholdRow extends StatelessWidget {
                   height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: kAccentColor.withValues(alpha: 0.1),
+                    color: accent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.monetization_on_rounded,
-                    color: kAccentColor,
+                    color: accent,
                     size: 20,
                   ),
                 ),
@@ -151,7 +150,7 @@ class _HouseholdRow extends StatelessWidget {
                   ),
                 ),
                 if (isActive)
-                  const Icon(Icons.check_circle_rounded, color: kAccentColor)
+                  Icon(Icons.check_circle_rounded, color: accent)
                 else
                   IconButton(
                     onPressed: () {

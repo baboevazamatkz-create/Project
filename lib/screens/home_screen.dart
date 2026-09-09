@@ -12,10 +12,9 @@ import '../widgets/add_expense_sheet.dart';
 import '../widgets/app_background_pattern.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/household_switcher_sheet.dart';
+import '../theme.dart';
 import '../widgets/summary_card.dart';
 import 'stats_screen.dart';
-
-const _tourAccent = Color(0xFF22C55E);
 
 Showcase _tourStep({
   required GlobalKey tourKey,
@@ -32,7 +31,7 @@ Showcase _tourStep({
     titleTextStyle: const TextStyle(
       fontSize: 16,
       fontWeight: FontWeight.w600,
-      color: _tourAccent,
+      color: kBrandColor,
     ),
     description: description,
     descTextStyle: TextStyle(
@@ -81,9 +80,16 @@ class _HomeScreenState extends State<HomeScreen> {
   final _switcherKey = GlobalKey();
   bool _tourStarted = false;
 
+  // Held in fields rather than created inside build(): a stream built during
+  // build is a brand-new Firestore listener on every rebuild, which drops the
+  // loaded data back to a spinner and re-reads the collection each time.
+  late Stream<AppCurrency> _currencyStream;
+  late Stream<List<Expense>> _expensesStream;
+
   @override
   void initState() {
     super.initState();
+    _subscribeToHousehold();
     ShowcaseView.register(
       onFinish: _markTourSeen,
       onDismiss: (_) => _markTourSeen(),
@@ -109,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
         TooltipActionButton(
           type: TooltipDefaultActionType.next,
           name: 'Далее',
-          backgroundColor: _tourAccent,
+          backgroundColor: kBrandColor,
           textStyle: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
@@ -122,9 +128,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.household.code != widget.household.code) {
+      _subscribeToHousehold();
+    }
+  }
+
+  @override
   void dispose() {
     ShowcaseView.get().unregister();
     super.dispose();
+  }
+
+  void _subscribeToHousehold() {
+    final code = widget.household.code;
+    _currencyStream = _settingsRepository.watchCurrency(code);
+    _expensesStream = _repository.watchExpenses(code);
   }
 
   /// Starts the onboarding tour once real content is on screen.
@@ -223,8 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('Отмена'),
           ),
           ElevatedButton(
-            style:
-                ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600),
+            style: ElevatedButton.styleFrom(backgroundColor: kExpenseColor),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Очистить'),
           ),
@@ -272,31 +291,35 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  double _totalFor(
-    List<Expense> expenses, {
-    required bool sameDay,
-    required bool isIncome,
-  }) {
+  /// Sums today's and this month's income and expenses in a single pass,
+  /// instead of walking the whole list once per figure on every rebuild.
+  _Totals _totals(List<Expense> expenses) {
     final now = DateTime.now();
-    return expenses
-        .where((e) =>
-            e.isIncome == isIncome &&
-            e.date.year == now.year &&
-            e.date.month == now.month &&
-            (!sameDay || e.date.day == now.day))
-        .fold(0.0, (sum, e) => sum + e.amount);
+    var totals = const _Totals();
+    for (final expense in expenses) {
+      final date = expense.date;
+      if (date.year != now.year || date.month != now.month) continue;
+      final isToday = date.day == now.day;
+      totals = totals.add(
+        amount: expense.amount,
+        isIncome: expense.isIncome,
+        isToday: isToday,
+      );
+    }
+    return totals;
   }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<AppCurrency>(
-      stream: _settingsRepository.watchCurrency(widget.household.code),
+      stream: _currencyStream,
       builder: (context, currencySnapshot) {
         final currency = currencySnapshot.data ?? AppCurrency.rub;
         return StreamBuilder<List<Expense>>(
-          stream: _repository.watchExpenses(widget.household.code),
+          stream: _expensesStream,
           builder: (context, snapshot) {
             final expenses = snapshot.data ?? const <Expense>[];
+            final totals = _totals(expenses);
             _maybeStartTour(hasContent: snapshot.hasData);
             return Scaffold(
               appBar: AppBar(
@@ -335,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const TooltipActionButton(
                         type: TooltipDefaultActionType.next,
                         name: 'Готово',
-                        backgroundColor: _tourAccent,
+                        backgroundColor: kBrandColor,
                         textStyle: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -362,7 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         'чтобы изменить',
                     child: FloatingActionButton(
                       heroTag: 'add_expense',
-                      backgroundColor: Colors.red.shade600,
+                      backgroundColor: kExpenseColor,
                       onPressed: () =>
                           _openAddSheet(TransactionType.expense, currency),
                       tooltip: 'Добавить расход',
@@ -376,7 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     description: 'Нажмите, чтобы записать поступление денег',
                     child: FloatingActionButton(
                       heroTag: 'add_income',
-                      backgroundColor: Colors.green.shade600,
+                      backgroundColor: kIncomeColor,
                       onPressed: () =>
                           _openAddSheet(TransactionType.income, currency),
                       tooltip: 'Добавить доход',
@@ -405,33 +428,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 child: SummaryCard(
-                                  todayExpenseTotal: _totalFor(
-                                    expenses,
-                                    sameDay: true,
-                                    isIncome: false,
-                                  ),
-                                  todayIncomeTotal: _totalFor(
-                                    expenses,
-                                    sameDay: true,
-                                    isIncome: true,
-                                  ),
-                                  monthExpenseTotal: _totalFor(
-                                    expenses,
-                                    sameDay: false,
-                                    isIncome: false,
-                                  ),
-                                  monthIncomeTotal: _totalFor(
-                                    expenses,
-                                    sameDay: false,
-                                    isIncome: true,
-                                  ),
+                                  todayExpenseTotal: totals.todayExpense,
+                                  todayIncomeTotal: totals.todayIncome,
+                                  monthExpenseTotal: totals.monthExpense,
+                                  monthIncomeTotal: totals.monthIncome,
                                   currency: currency,
                                 ),
                               ),
                             ),
                           ),
                           if (expenses.isEmpty)
-                            SliverFillRemaining(
+                            const SliverFillRemaining(
                               hasScrollBody: false,
                               child: _EmptyState(),
                             )
@@ -453,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 20),
                                       decoration: BoxDecoration(
-                                        color: Colors.red.shade400,
+                                        color: kExpenseColor,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: const Icon(
@@ -485,7 +492,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+class _Totals {
+  final double todayIncome;
+  final double todayExpense;
+  final double monthIncome;
+  final double monthExpense;
+
+  const _Totals({
+    this.todayIncome = 0,
+    this.todayExpense = 0,
+    this.monthIncome = 0,
+    this.monthExpense = 0,
+  });
+
+  _Totals add({
+    required double amount,
+    required bool isIncome,
+    required bool isToday,
+  }) {
+    return _Totals(
+      todayIncome: todayIncome + (isIncome && isToday ? amount : 0),
+      todayExpense: todayExpense + (!isIncome && isToday ? amount : 0),
+      monthIncome: monthIncome + (isIncome ? amount : 0),
+      monthExpense: monthExpense + (!isIncome ? amount : 0),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -497,8 +533,7 @@ class _EmptyState extends StatelessWidget {
             Icon(
               Icons.receipt_long_outlined,
               size: 56,
-              color:
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
+              color: accentForeground(context).withValues(alpha: 0.4),
             ),
             const SizedBox(height: 16),
             Text(

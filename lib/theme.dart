@@ -2,6 +2,21 @@ import 'package:flutter/material.dart';
 
 const Color kAccentColor = Color(0xFF2D2D2D);
 
+/// Semantic colours shared across the whole app, so income, expenses and the
+/// brand accent look identical everywhere they appear.
+const Color kIncomeColor = Color(0xFF16A34A);
+const Color kExpenseColor = Color(0xFFDC2626);
+const Color kBrandColor = Color(0xFF22C55E);
+
+/// [kAccentColor] is a near-black ink tone: right on the light theme, and
+/// invisible on the dark one. Anything that paints the accent *on* the
+/// background — an icon, a tint, a hairline — has to flip with the theme,
+/// so it reads on both.
+Color accentForeground(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : kAccentColor;
+
 ThemeData buildAppTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
   final colorScheme = ColorScheme.fromSeed(

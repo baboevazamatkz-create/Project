@@ -37,10 +37,15 @@ class HouseholdSettingsRepository {
         .doc(householdCode)
         .collection('expenses');
     final snapshot = await collection.get();
-    final batch = _firestore.batch();
-    for (final doc in snapshot.docs) {
-      batch.delete(doc.reference);
+    // Firestore refuses a batch of more than 500 writes, so a budget that has
+    // been running for a while has to be cleared in chunks.
+    const chunkSize = 500;
+    for (var i = 0; i < snapshot.docs.length; i += chunkSize) {
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs.skip(i).take(chunkSize)) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
     }
-    await batch.commit();
   }
 }

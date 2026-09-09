@@ -2,6 +2,8 @@ import 'package:intl/intl.dart';
 
 enum AppCurrency { rub, kzt, usd }
 
+final _formatCache = <AppCurrency, NumberFormat>{};
+
 extension AppCurrencyX on AppCurrency {
   String get symbol {
     switch (this) {
@@ -36,8 +38,16 @@ extension AppCurrencyX on AppCurrency {
     }
   }
 
-  NumberFormat get format =>
-      NumberFormat.currency(locale: locale, symbol: symbol, decimalDigits: 0);
+  /// Cached per currency: building a [NumberFormat] parses locale data, and
+  /// this is read for every amount on screen on every rebuild.
+  NumberFormat get format => _formatCache.putIfAbsent(
+        this,
+        () => NumberFormat.currency(
+          locale: locale,
+          symbol: symbol,
+          decimalDigits: 0,
+        ),
+      );
 
   String get storageKey => name;
 

@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../theme.dart';
+
 class AppBackgroundPattern extends StatelessWidget {
   final Widget child;
 
@@ -9,12 +11,16 @@ class AppBackgroundPattern extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary.withValues(alpha: 0.05);
+    final color = accentForeground(context).withValues(alpha: 0.05);
     return Stack(
       children: [
         Positioned.fill(
           child: IgnorePointer(
-            child: CustomPaint(painter: _PatternPainter(color: color)),
+            // The pattern paints ~100 glyphs, so keep it in its own layer
+            // instead of repainting it whenever the content above changes.
+            child: RepaintBoundary(
+              child: CustomPaint(painter: _PatternPainter(color: color)),
+            ),
           ),
         ),
         child,
