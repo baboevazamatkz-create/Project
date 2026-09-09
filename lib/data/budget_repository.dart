@@ -19,7 +19,8 @@ class BudgetRepository {
     });
   }
 
-  double? budgetFor(Map<String, double> budgets, ExpenseCategory category) {
+  static double? budgetFor(
+      Map<String, double> budgets, ExpenseCategory category) {
     return budgets[category.storageKey];
   }
 

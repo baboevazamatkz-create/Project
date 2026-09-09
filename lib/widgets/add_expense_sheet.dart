@@ -7,6 +7,9 @@ import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
 import '../models/transaction_type.dart';
+import '../theme.dart';
+
+final _dateFormat = DateFormat('d MMMM y', 'ru');
 
 String _groupThousands(String digits) {
   final buffer = StringBuffer();
@@ -141,8 +144,6 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('d MMMM y', 'ru');
-
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -254,9 +255,20 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                   children: [
                     const Icon(Icons.calendar_today_rounded, size: 18),
                     const SizedBox(width: 12),
-                    Text(
-                      dateFormat.format(_selectedDate),
-                      style: const TextStyle(fontWeight: FontWeight.normal),
+                    // A long month name at a large system font scale used to
+                    // run past the edge of the row; the date shrinks to fit
+                    // rather than being clipped.
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _dateFormat.format(_selectedDate),
+                          maxLines: 1,
+                          softWrap: false,
+                          style: const TextStyle(fontWeight: FontWeight.normal),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -267,8 +279,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               width: double.infinity,
               child: ElevatedButton(
                 style: widget.type == TransactionType.income
-                    ? ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600)
+                    ? ElevatedButton.styleFrom(backgroundColor: kIncomeColor)
                     : null,
                 onPressed: _submit,
                 child: Text(_isEditing ? 'Сохранить' : 'Добавить'),

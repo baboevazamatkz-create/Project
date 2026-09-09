@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/currency.dart';
-
-const _incomeColor = Color(0xFF16A34A);
-const _expenseColor = Color(0xFFDC2626);
+import '../theme.dart';
 
 class SummaryCard extends StatelessWidget {
   final double todayExpenseTotal;
@@ -25,7 +23,7 @@ class SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final baseColor = Theme.of(context).cardTheme.color ?? Colors.white;
     final tintedColor = Color.alphaBlend(
-      const Color(0xFF22C55E).withValues(alpha: 0.06),
+      kBrandColor.withValues(alpha: 0.06),
       baseColor,
     );
     return Container(
@@ -111,7 +109,7 @@ class _SummaryItem extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           '+${currency.format.format(incomeTotal)}',
-          style: amountStyle.copyWith(color: _incomeColor),
+          style: amountStyle.copyWith(color: kIncomeColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
@@ -119,7 +117,7 @@ class _SummaryItem extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           '−${currency.format.format(expenseTotal)}',
-          style: amountStyle.copyWith(color: _expenseColor),
+          style: amountStyle.copyWith(color: kExpenseColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
@@ -138,7 +136,7 @@ class _SummaryItem extends StatelessWidget {
               ? currency.format.format(net)
               : '−${currency.format.format(net.abs())}',
           style: amountStyle.copyWith(
-            color: net >= 0 ? _incomeColor : _expenseColor,
+            color: net >= 0 ? kIncomeColor : kExpenseColor,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

@@ -4,9 +4,9 @@ import 'package:intl/intl.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
+import '../theme.dart';
 
-const _incomeColor = Color(0xFF16A34A);
-const _expenseColor = Color(0xFFDC2626);
+final _dateFormat = DateFormat('d MMM', 'ru');
 
 class ExpenseTile extends StatelessWidget {
   final Expense expense;
@@ -22,13 +22,14 @@ class ExpenseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('d MMM', 'ru');
     final isIncome = expense.isIncome;
-    final color = isIncome ? _incomeColor : expense.category!.color;
+    final color = isIncome ? kIncomeColor : expense.category!.color;
     final icon =
         isIncome ? Icons.arrow_downward_rounded : expense.category!.icon;
     final title = isIncome ? 'Доход' : expense.category!.label;
     final sign = isIncome ? '+' : '−';
+    final mutedColor =
+        Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6);
 
     return Card(
       color: Theme.of(context).cardTheme.color?.withValues(alpha: 0.82),
@@ -37,81 +38,101 @@ class ExpenseTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.normal,
-                      ),
-                    ),
-                    if (expense.note.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        expense.note,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.color
-                              ?.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // The amount is given a share of the row rather than whatever it
+              // wants: a seven-digit sum on a small screen used to push the row
+              // past its width. Inside that share it scales down to fit, so it
+              // stays readable instead of being clipped.
+              final amountMaxWidth = constraints.maxWidth * 0.42;
+              return Row(
                 children: [
-                  Text(
-                    '$sign${currency.format.format(expense.amount)}',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.normal,
-                      color: isIncome ? _incomeColor : _expenseColor,
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: color,
+                      size: 22,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    dateFormat.format(expense.date),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.color
-                          ?.withValues(alpha: 0.5),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                        if (expense.note.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            expense.note,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: mutedColor,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: amountMaxWidth),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '$sign${currency.format.format(expense.amount)}',
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.normal,
+                              color: isIncome ? kIncomeColor : kExpenseColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            _dateFormat.format(expense.date),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.color
+                                  ?.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),

@@ -6,6 +6,9 @@ import '../data/budget_repository.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
+import '../theme.dart';
+
+final _monthFormat = DateFormat('LLL', 'ru');
 
 class StatsScreen extends StatefulWidget {
   final String householdCode;
@@ -27,17 +30,21 @@ class _StatsScreenState extends State<StatsScreen>
     with SingleTickerProviderStateMixin {
   final _budgetRepository = BudgetRepository();
   late final TabController _tabController;
-  late final List<Expense> _monthExpenses;
+
+  // Aggregated once here rather than per build: the expense list is a fixed
+  // snapshot for this screen, so recomputing it on every rebuild (and
+  // re-opening the budgets stream with it) is pure waste.
+  late final List<MapEntry<ExpenseCategory, double>> _categoryEntries;
+  late final List<MapEntry<DateTime, double>> _monthlyTotals;
+  late final Stream<Map<String, double>> _budgetsStream;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    final now = DateTime.now();
-    _monthExpenses = widget.expenses
-        .where((e) =>
-            !e.isIncome && e.date.year == now.year && e.date.month == now.month)
-        .toList();
+    _budgetsStream = _budgetRepository.watchBudgets(widget.householdCode);
+    _categoryEntries = _buildCategoryEntries();
+    _monthlyTotals = _buildMonthlyTotals();
   }
 
   @override
@@ -46,30 +53,34 @@ class _StatsScreenState extends State<StatsScreen>
     super.dispose();
   }
 
-  Map<ExpenseCategory, double> get _categoryTotals {
+  List<MapEntry<ExpenseCategory, double>> _buildCategoryEntries() {
+    final now = DateTime.now();
     final totals = <ExpenseCategory, double>{};
-    for (final expense in _monthExpenses) {
+    for (final expense in widget.expenses) {
+      if (expense.isIncome) continue;
+      final date = expense.date;
+      if (date.year != now.year || date.month != now.month) continue;
       final category = expense.category!;
       totals[category] = (totals[category] ?? 0) + expense.amount;
     }
-    return totals;
+    return totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
   }
 
-  List<MapEntry<DateTime, double>> get _monthlyTotals {
+  List<MapEntry<DateTime, double>> _buildMonthlyTotals() {
     final now = DateTime.now();
     final months =
         List.generate(6, (i) => DateTime(now.year, now.month - (5 - i)));
     final totals = {for (final m in months) m: 0.0};
-    for (final expense in widget.expenses.where((e) => !e.isIncome)) {
+    for (final expense in widget.expenses) {
+      if (expense.isIncome) continue;
       final key = DateTime(expense.date.year, expense.date.month);
-      if (totals.containsKey(key)) {
-        totals[key] = totals[key]! + expense.amount;
-      }
+      final current = totals[key];
+      if (current != null) totals[key] = current + expense.amount;
     }
     return months.map((m) => MapEntry(m, totals[m]!)).toList();
   }
 
-  String _monthLabel(DateTime month) => DateFormat('LLL', 'ru').format(month);
+  String _monthLabel(DateTime month) => _monthFormat.format(month);
 
   Future<void> _editBudget(ExpenseCategory category, double? current) async {
     final controller = TextEditingController(
@@ -126,15 +137,13 @@ class _StatsScreenState extends State<StatsScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _CategoriesTab(
-            entries: (_categoryTotals.entries.toList()
-              ..sort((a, b) => b.value.compareTo(a.value))),
+          CategoriesTab(
+            entries: _categoryEntries,
             currency: widget.currency,
-            householdCode: widget.householdCode,
-            budgetRepository: _budgetRepository,
+            budgetsStream: _budgetsStream,
             onEditBudget: _editBudget,
           ),
-          _HistoryTab(
+          HistoryTab(
             monthlyTotals: _monthlyTotals,
             currency: widget.currency,
             monthLabel: _monthLabel,
@@ -145,18 +154,17 @@ class _StatsScreenState extends State<StatsScreen>
   }
 }
 
-class _CategoriesTab extends StatelessWidget {
+class CategoriesTab extends StatelessWidget {
   final List<MapEntry<ExpenseCategory, double>> entries;
   final AppCurrency currency;
-  final String householdCode;
-  final BudgetRepository budgetRepository;
+  final Stream<Map<String, double>> budgetsStream;
   final void Function(ExpenseCategory category, double? current) onEditBudget;
 
-  const _CategoriesTab({
+  const CategoriesTab({
+    super.key,
     required this.entries,
     required this.currency,
-    required this.householdCode,
-    required this.budgetRepository,
+    required this.budgetsStream,
     required this.onEditBudget,
   });
 
@@ -165,7 +173,7 @@ class _CategoriesTab extends StatelessWidget {
     final total = entries.fold(0.0, (sum, e) => sum + e.value);
 
     return StreamBuilder<Map<String, double>>(
-      stream: budgetRepository.watchBudgets(householdCode),
+      stream: budgetsStream,
       builder: (context, snapshot) {
         final budgets = snapshot.data ?? const {};
 
@@ -202,75 +210,91 @@ class _CategoriesTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 28),
-            SizedBox(
-              height: 300,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  PieChart(
-                    PieChartData(
-                      sections: entries.map((entry) {
-                        final percent =
-                            total == 0 ? 0.0 : entry.value / total * 100;
-                        return PieChartSectionData(
-                          value: entry.value,
-                          color: entry.key.color,
-                          title: percent >= 6
-                              ? '${percent.toStringAsFixed(0)}%'
-                              : '',
-                          radius: 88,
-                          titleStyle: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.normal,
-                            fontSize: 13,
-                          ),
-                        );
-                      }).toList(),
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 52,
-                    ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
+            // The chart is sized from the width actually available so it fits
+            // narrow phones and gets no larger than it needs to on wide ones.
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final diameter = constraints.maxWidth.clamp(180.0, 300.0);
+                final ringRadius = diameter * 0.31;
+                final centerRadius = diameter * 0.185;
+                return SizedBox(
+                  height: diameter,
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      Text(
-                        'Всего',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.color
-                              ?.withValues(alpha: 0.5),
+                      PieChart(
+                        PieChartData(
+                          sections: entries.map((entry) {
+                            final percent =
+                                total == 0 ? 0.0 : entry.value / total * 100;
+                            return PieChartSectionData(
+                              value: entry.value,
+                              color: entry.key.color,
+                              title: percent >= 6
+                                  ? '${percent.toStringAsFixed(0)}%'
+                                  : '',
+                              radius: ringRadius,
+                              titleStyle: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.normal,
+                                fontSize: 13,
+                              ),
+                            );
+                          }).toList(),
+                          sectionsSpace: 2,
+                          centerSpaceRadius: centerRadius,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        currency.format.format(total),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.normal,
+                      SizedBox(
+                        width: centerRadius * 1.7,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Всего',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.color
+                                    ?.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                currency.format.format(total),
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             const SizedBox(height: 28),
             for (final entry in entries)
-              _CategoryRow(
-                category: entry.key,
-                amount: entry.value,
-                currency: currency,
-                budget: budgetRepository.budgetFor(budgets, entry.key),
-                onTap: () => onEditBudget(
-                  entry.key,
-                  budgetRepository.budgetFor(budgets, entry.key),
-                ),
-              ),
+              () {
+                final budget = BudgetRepository.budgetFor(budgets, entry.key);
+                return _CategoryRow(
+                  category: entry.key,
+                  amount: entry.value,
+                  currency: currency,
+                  budget: budget,
+                  onTap: () => onEditBudget(entry.key, budget),
+                );
+              }(),
           ],
         );
       },
@@ -309,45 +333,58 @@ class _CategoryRow extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: category.color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(category.icon, color: category.color, size: 18),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    category.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.normal),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    budgetValue != null
-                        ? '${currency.format.format(amount)} / ${currency.format.format(budgetValue)}'
-                        : currency.format.format(amount),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.end,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.normal,
-                      color: isOverBudget ? Colors.red.shade600 : null,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Same deal as the expense rows: the figures get a bounded
+                // share of the row and shrink inside it, so they stay flush
+                // right and the category name keeps whatever is left.
+                final amountMaxWidth = constraints.maxWidth * 0.5;
+                return Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: category.color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child:
+                          Icon(category.icon, color: category.color, size: 18),
                     ),
-                  ),
-                ),
-              ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        category.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.normal),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: amountMaxWidth),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          budgetValue != null
+                              ? '${currency.format.format(amount)} / ${currency.format.format(budgetValue)}'
+                              : currency.format.format(amount),
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.normal,
+                            color: isOverBudget ? kExpenseColor : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             if (progress != null) ...[
               const SizedBox(height: 6),
@@ -359,7 +396,7 @@ class _CategoryRow extends StatelessWidget {
                     value: progress.clamp(0.0, 1.0),
                     minHeight: 6,
                     backgroundColor: category.color.withValues(alpha: 0.12),
-                    color: isOverBudget ? Colors.red.shade400 : category.color,
+                    color: isOverBudget ? kExpenseColor : category.color,
                   ),
                 ),
               ),
@@ -371,12 +408,13 @@ class _CategoryRow extends StatelessWidget {
   }
 }
 
-class _HistoryTab extends StatelessWidget {
+class HistoryTab extends StatelessWidget {
   final List<MapEntry<DateTime, double>> monthlyTotals;
   final AppCurrency currency;
   final String Function(DateTime month) monthLabel;
 
-  const _HistoryTab({
+  const HistoryTab({
+    super.key,
     required this.monthlyTotals,
     required this.currency,
     required this.monthLabel,
