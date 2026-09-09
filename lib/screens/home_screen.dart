@@ -68,8 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ShowcaseView.get().startShowCase([
-        _incomeFabKey,
         _expenseFabKey,
+        _incomeFabKey,
         _summaryCardKey,
         _statsKey,
         _switcherKey,
@@ -245,24 +245,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              floatingActionButton: Row(
+              floatingActionButton: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Showcase(
-                    key: _incomeFabKey,
-                    title: 'Добавить доход',
-                    description: 'Нажмите, чтобы записать поступление денег',
-                    targetShapeBorder: const CircleBorder(),
-                    child: FloatingActionButton(
-                      heroTag: 'add_income',
-                      backgroundColor: Colors.green.shade600,
-                      onPressed: () =>
-                          _openAddSheet(TransactionType.income, currency),
-                      tooltip: 'Добавить доход',
-                      child: const Icon(Icons.add),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
                   Showcase(
                     key: _expenseFabKey,
                     title: 'Добавить расход',
@@ -277,6 +262,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           _openAddSheet(TransactionType.expense, currency),
                       tooltip: 'Добавить расход',
                       child: const Icon(Icons.remove),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Showcase(
+                    key: _incomeFabKey,
+                    title: 'Добавить доход',
+                    description: 'Нажмите, чтобы записать поступление денег',
+                    targetShapeBorder: const CircleBorder(),
+                    child: FloatingActionButton(
+                      heroTag: 'add_income',
+                      backgroundColor: Colors.green.shade600,
+                      onPressed: () =>
+                          _openAddSheet(TransactionType.income, currency),
+                      tooltip: 'Добавить доход',
+                      child: const Icon(Icons.add),
                     ),
                   ),
                 ],
