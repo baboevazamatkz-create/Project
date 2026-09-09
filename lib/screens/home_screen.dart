@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 import '../data/expense_repository.dart';
 import '../data/household_settings_repository.dart';
@@ -32,8 +34,53 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const _tourSeenKey = 'onboarding_tour_seen';
+
   final _repository = ExpenseRepository();
   final _settingsRepository = HouseholdSettingsRepository();
+
+  final _incomeFabKey = GlobalKey();
+  final _expenseFabKey = GlobalKey();
+  final _summaryCardKey = GlobalKey();
+  final _statsKey = GlobalKey();
+  final _switcherKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    ShowcaseView.register(
+      onFinish: _markTourSeen,
+      onDismiss: (_) => _markTourSeen(),
+    );
+    _maybeStartTour();
+  }
+
+  @override
+  void dispose() {
+    ShowcaseView.get().unregister();
+    super.dispose();
+  }
+
+  Future<void> _maybeStartTour() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_tourSeenKey) ?? false) return;
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ShowcaseView.get().startShowCase([
+        _incomeFabKey,
+        _expenseFabKey,
+        _summaryCardKey,
+        _statsKey,
+        _switcherKey,
+      ]);
+    });
+  }
+
+  Future<void> _markTourSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_tourSeenKey, true);
+  }
 
   Future<void> _addExpense(Expense expense) {
     return _repository.addExpense(widget.household.code, expense);
@@ -172,37 +219,65 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: const Icon(Icons.delete_sweep_outlined),
                     tooltip: 'Очистить бюджет',
                   ),
-                  IconButton(
-                    onPressed: () => _openStats(expenses, currency),
-                    icon: const Icon(Icons.pie_chart_rounded),
-                    tooltip: 'По категориям',
+                  Showcase(
+                    key: _statsKey,
+                    title: 'Статистика',
+                    description:
+                        'Диаграмма расходов по категориям и история за месяц',
+                    targetShapeBorder: const CircleBorder(),
+                    child: IconButton(
+                      onPressed: () => _openStats(expenses, currency),
+                      icon: const Icon(Icons.pie_chart_rounded),
+                      tooltip: 'По категориям',
+                    ),
                   ),
-                  IconButton(
-                    onPressed: _showHouseholdSwitcher,
-                    icon: const Icon(Icons.people_alt_outlined),
-                    tooltip: 'Мои бюджеты',
+                  Showcase(
+                    key: _switcherKey,
+                    title: 'Мои бюджеты',
+                    description: 'Переключайтесь между бюджетами или '
+                        'создайте новый, чтобы вести расходы с близкими',
+                    targetShapeBorder: const CircleBorder(),
+                    child: IconButton(
+                      onPressed: _showHouseholdSwitcher,
+                      icon: const Icon(Icons.people_alt_outlined),
+                      tooltip: 'Мои бюджеты',
+                    ),
                   ),
                 ],
               ),
               floatingActionButton: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  FloatingActionButton(
-                    heroTag: 'add_income',
-                    backgroundColor: Colors.green.shade600,
-                    onPressed: () =>
-                        _openAddSheet(TransactionType.income, currency),
-                    tooltip: 'Добавить доход',
-                    child: const Icon(Icons.add),
+                  Showcase(
+                    key: _incomeFabKey,
+                    title: 'Добавить доход',
+                    description: 'Нажмите, чтобы записать поступление денег',
+                    targetShapeBorder: const CircleBorder(),
+                    child: FloatingActionButton(
+                      heroTag: 'add_income',
+                      backgroundColor: Colors.green.shade600,
+                      onPressed: () =>
+                          _openAddSheet(TransactionType.income, currency),
+                      tooltip: 'Добавить доход',
+                      child: const Icon(Icons.add),
+                    ),
                   ),
                   const SizedBox(width: 14),
-                  FloatingActionButton(
-                    heroTag: 'add_expense',
-                    backgroundColor: Colors.red.shade600,
-                    onPressed: () =>
-                        _openAddSheet(TransactionType.expense, currency),
-                    tooltip: 'Добавить расход',
-                    child: const Icon(Icons.remove),
+                  Showcase(
+                    key: _expenseFabKey,
+                    title: 'Добавить расход',
+                    description: 'Нажмите, чтобы записать трату. Смахните '
+                        'запись влево, чтобы удалить, или зажмите её, '
+                        'чтобы изменить',
+                    targetShapeBorder: const CircleBorder(),
+                    child: FloatingActionButton(
+                      heroTag: 'add_expense',
+                      backgroundColor: Colors.red.shade600,
+                      onPressed: () =>
+                          _openAddSheet(TransactionType.expense, currency),
+                      tooltip: 'Добавить расход',
+                      child: const Icon(Icons.remove),
+                    ),
                   ),
                 ],
               ),
@@ -214,28 +289,35 @@ class _HomeScreenState extends State<HomeScreen> {
                           SliverPadding(
                             padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
                             sliver: SliverToBoxAdapter(
-                              child: SummaryCard(
-                                todayExpenseTotal: _totalFor(
-                                  expenses,
-                                  sameDay: true,
-                                  isIncome: false,
+                              child: Showcase(
+                                key: _summaryCardKey,
+                                title: 'Итоги',
+                                description: 'Здесь видно, сколько '
+                                    'потрачено и заработано сегодня и за '
+                                    'месяц',
+                                child: SummaryCard(
+                                  todayExpenseTotal: _totalFor(
+                                    expenses,
+                                    sameDay: true,
+                                    isIncome: false,
+                                  ),
+                                  todayIncomeTotal: _totalFor(
+                                    expenses,
+                                    sameDay: true,
+                                    isIncome: true,
+                                  ),
+                                  monthExpenseTotal: _totalFor(
+                                    expenses,
+                                    sameDay: false,
+                                    isIncome: false,
+                                  ),
+                                  monthIncomeTotal: _totalFor(
+                                    expenses,
+                                    sameDay: false,
+                                    isIncome: true,
+                                  ),
+                                  currency: currency,
                                 ),
-                                todayIncomeTotal: _totalFor(
-                                  expenses,
-                                  sameDay: true,
-                                  isIncome: true,
-                                ),
-                                monthExpenseTotal: _totalFor(
-                                  expenses,
-                                  sameDay: false,
-                                  isIncome: false,
-                                ),
-                                monthIncomeTotal: _totalFor(
-                                  expenses,
-                                  sameDay: false,
-                                  isIncome: true,
-                                ),
-                                currency: currency,
                               ),
                             ),
                           ),
