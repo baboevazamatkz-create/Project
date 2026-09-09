@@ -51,26 +51,33 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
     if (!_validateLabel()) return;
     setState(() => _busy = true);
     final code = HouseholdRepository.generateCode();
+    final label = _labelController.text.trim();
     await _settingsRepository.setCurrency(code, _selectedCurrency);
+    await _settingsRepository.setLabel(code, label);
     if (!mounted) return;
     await _showCodeDialog(code);
     if (!mounted) return;
-    widget.onReady(Household(code: code, label: _labelController.text.trim()));
+    widget.onReady(Household(code: code, label: label));
   }
 
   Future<void> _joinHousehold() async {
-    final labelOk = _validateLabel();
     final code = _codeController.text.trim().toUpperCase();
     if (code.length < 4) {
       setState(() => _codeError = 'Введите код бюджета целиком');
       return;
     }
-    if (!labelOk) return;
     setState(() {
       _busy = true;
       _codeError = null;
     });
-    widget.onReady(Household(code: code, label: _labelController.text.trim()));
+    String label;
+    try {
+      label = await _settingsRepository.fetchLabel(code) ?? 'Бюджет';
+    } catch (_) {
+      label = 'Бюджет';
+    }
+    if (!mounted) return;
+    widget.onReady(Household(code: code, label: label));
   }
 
   Future<void> _showCodeDialog(String code) {
