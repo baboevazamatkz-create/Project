@@ -25,7 +25,8 @@ class ExpenseTile extends StatelessWidget {
     final dateFormat = DateFormat('d MMM', 'ru');
     final isIncome = expense.isIncome;
     final color = isIncome ? _incomeColor : expense.category!.color;
-    final icon = isIncome ? Icons.arrow_upward_rounded : expense.category!.icon;
+    final icon =
+        isIncome ? Icons.arrow_downward_rounded : expense.category!.icon;
     final title = isIncome ? 'Доход' : expense.category!.label;
     final sign = isIncome ? '+' : '−';
 

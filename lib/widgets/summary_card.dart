@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../models/currency.dart';
 
-const _incomeColor = Color(0xFF6EE7A8);
-const _expenseColor = Color(0xFFEF6B6B);
-const _cardStart = Color(0xFF4D4D4D);
-const _cardEnd = Color(0xFF655C81);
+const _incomeColor = Color(0xFF16A34A);
+const _expenseColor = Color(0xFFDC2626);
 
 class SummaryCard extends StatelessWidget {
   final double todayExpenseTotal;
@@ -28,18 +26,11 @@ class SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            _cardStart.withValues(alpha: 0.62),
-            _cardEnd.withValues(alpha: 0.62),
-          ],
-        ),
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: _cardStart.withValues(alpha: 0.15),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -58,9 +49,9 @@ class SummaryCard extends StatelessWidget {
           ),
           Container(
             width: 1,
-            height: 70,
+            height: 78,
             margin: const EdgeInsets.only(top: 4),
-            color: Colors.white.withValues(alpha: 0.15),
+            color: Theme.of(context).dividerTheme.color,
           ),
           Expanded(
             child: _SummaryItem(
@@ -92,8 +83,9 @@ class _SummaryItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final net = incomeTotal - expenseTotal;
-    const amountStyle = TextStyle(
-      color: Colors.white,
+    final bodyColor = Theme.of(context).textTheme.bodyMedium?.color;
+    final amountStyle = TextStyle(
+      color: bodyColor,
       fontSize: 13,
       fontWeight: FontWeight.normal,
     );
@@ -103,8 +95,8 @@ class _SummaryItem extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: bodyColor,
             fontSize: 17,
             fontWeight: FontWeight.normal,
           ),
@@ -129,11 +121,21 @@ class _SummaryItem extends StatelessWidget {
         Container(
           width: 36,
           height: 1,
-          color: Colors.white.withValues(alpha: 0.25),
+          color: Theme.of(context).dividerTheme.color,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
-          '${net >= 0 ? '+' : '−'}${currency.format.format(net.abs())}',
+          'Итого',
+          style: TextStyle(
+            color: bodyColor?.withValues(alpha: 0.5),
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          net >= 0
+              ? currency.format.format(net)
+              : '−${currency.format.format(net.abs())}',
           style: amountStyle.copyWith(
             color: net >= 0 ? _incomeColor : _expenseColor,
           ),
