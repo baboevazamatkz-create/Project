@@ -48,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
       SnackBar(
         content: Text(expense.isIncome ? 'Доход удалён' : 'Расход удалён'),
         duration: const Duration(seconds: 2),
+        persist: false,
         action: SnackBarAction(
           label: 'Отменить',
           onPressed: () =>
