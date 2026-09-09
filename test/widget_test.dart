@@ -12,7 +12,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Семейный бюджет'), findsOneWidget);
+    expect(find.text('Трекер расходов'), findsOneWidget);
     expect(find.text('Создать новый бюджет'), findsOneWidget);
     expect(find.text('Присоединиться по коду'), findsOneWidget);
   });

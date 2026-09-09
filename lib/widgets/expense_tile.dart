@@ -30,6 +30,7 @@ class ExpenseTile extends StatelessWidget {
     final sign = isIncome ? '+' : '−';
 
     return Card(
+      color: Theme.of(context).cardTheme.color?.withValues(alpha: 0.82),
       child: InkWell(
         onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(20),
@@ -59,7 +60,7 @@ class ExpenseTile extends StatelessWidget {
                       title,
                       style: const TextStyle(
                         fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.normal,
                       ),
                     ),
                     if (expense.note.isNotEmpty) ...[
@@ -89,7 +90,7 @@ class ExpenseTile extends StatelessWidget {
                     '$sign${currency.format.format(expense.amount)}',
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.normal,
                       color: isIncome ? _incomeColor : _expenseColor,
                     ),
                   ),

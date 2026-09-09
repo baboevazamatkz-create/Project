@@ -174,7 +174,8 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                   : (widget.type == TransactionType.expense
                       ? 'Новый расход'
                       : 'Новый доход'),
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -183,7 +184,8 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                   const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [_ThousandsSeparatorFormatter()],
               autofocus: true,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
               decoration: InputDecoration(
                 hintText: 'Сумма, ${widget.currency.symbol}',
                 errorText: _errorText,
@@ -197,7 +199,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               const SizedBox(height: 16),
               const Text(
                 'Категория',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
               ),
               const SizedBox(height: 10),
               Wrap(
@@ -217,7 +219,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                     label: Text(category.label),
                     labelStyle: TextStyle(
                       color: selected ? Colors.white : category.color,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.normal,
                     ),
                     selectedColor: category.color,
                     backgroundColor: category.color.withValues(alpha: 0.1),
@@ -254,7 +256,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                     const SizedBox(width: 12),
                     Text(
                       dateFormat.format(_selectedDate),
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontWeight: FontWeight.normal),
                     ),
                   ],
                 ),

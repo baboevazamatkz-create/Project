@@ -40,7 +40,7 @@ class HouseholdSwitcherSheet extends StatelessWidget {
             ),
             const Text(
               'Мои бюджеты',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
             ),
             const SizedBox(height: 16),
             for (final household in households)
@@ -123,7 +123,7 @@ class _HouseholdRow extends StatelessWidget {
                         household.label,
                         style: const TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.normal,
                         ),
                       ),
                       const SizedBox(height: 2),
