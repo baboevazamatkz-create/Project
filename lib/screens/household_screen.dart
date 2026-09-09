@@ -142,7 +142,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                 children: [
                   if (!widget.canCancel) ...[
                     const Text(
-                      'ГдеБабло?',
+                      'Трекинг расходов',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 24,
