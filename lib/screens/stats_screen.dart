@@ -193,7 +193,7 @@ class _CategoriesTab extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.normal,
                 color: Theme.of(context)
                     .textTheme
                     .bodyMedium
@@ -221,7 +221,7 @@ class _CategoriesTab extends StatelessWidget {
                           radius: 88,
                           titleStyle: const TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.normal,
                             fontSize: 13,
                           ),
                         );
@@ -249,7 +249,7 @@ class _CategoriesTab extends StatelessWidget {
                         currency.format.format(total),
                         style: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.normal,
                         ),
                       ),
                     ],
@@ -324,7 +324,7 @@ class _CategoryRow extends StatelessWidget {
                   child: Text(
                     category.label,
                     style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600),
+                        fontSize: 14, fontWeight: FontWeight.normal),
                   ),
                 ),
                 Text(
@@ -333,7 +333,7 @@ class _CategoryRow extends StatelessWidget {
                       : currency.format.format(amount),
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.normal,
                     color: isOverBudget ? Colors.red.shade600 : null,
                   ),
                 ),
@@ -411,7 +411,7 @@ class _HistoryTab extends StatelessWidget {
             'Расходы за последние 6 месяцев',
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.normal,
               color: Theme.of(context)
                   .textTheme
                   .bodyMedium

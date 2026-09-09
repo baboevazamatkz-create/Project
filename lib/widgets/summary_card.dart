@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/currency.dart';
 
 const _incomeColor = Color(0xFF6EE7A8);
+const _expenseColor = Color(0xFFEF6B6B);
 const _cardStart = Color(0xFF4D4D4D);
 const _cardEnd = Color(0xFF655C81);
 
@@ -93,8 +94,8 @@ class _SummaryItem extends StatelessWidget {
     final net = incomeTotal - expenseTotal;
     const amountStyle = TextStyle(
       color: Colors.white,
-      fontSize: 15,
-      fontWeight: FontWeight.w700,
+      fontSize: 13,
+      fontWeight: FontWeight.normal,
     );
 
     return Column(
@@ -105,7 +106,7 @@ class _SummaryItem extends StatelessWidget {
           style: const TextStyle(
             color: Colors.white,
             fontSize: 17,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.normal,
           ),
         ),
         const SizedBox(height: 10),
@@ -119,7 +120,7 @@ class _SummaryItem extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           '−${currency.format.format(expenseTotal)}',
-          style: amountStyle,
+          style: amountStyle.copyWith(color: _expenseColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
@@ -133,7 +134,9 @@ class _SummaryItem extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           '${net >= 0 ? '+' : '−'}${currency.format.format(net.abs())}',
-          style: amountStyle,
+          style: amountStyle.copyWith(
+            color: net >= 0 ? _incomeColor : _expenseColor,
+          ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,

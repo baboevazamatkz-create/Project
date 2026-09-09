@@ -25,7 +25,7 @@ ThemeData buildAppTheme(Brightness brightness) {
       titleTextStyle: TextStyle(
         color: isDark ? Colors.white : kAccentColor,
         fontSize: 22,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.normal,
       ),
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(

@@ -47,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(expense.isIncome ? 'Доход удалён' : 'Расход удалён'),
+        duration: const Duration(seconds: 2),
         action: SnackBarAction(
           label: 'Отменить',
           onPressed: () =>
@@ -312,7 +313,7 @@ class _EmptyState extends StatelessWidget {
               'Пока нет расходов',
               style: TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.normal,
                 color: Theme.of(context)
                     .textTheme
                     .bodyMedium
