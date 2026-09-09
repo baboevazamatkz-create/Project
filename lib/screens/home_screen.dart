@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _repository.deleteExpense(widget.household.code, expense.id);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(expense.isIncome ? 'Доход удалён' : 'Расход удалён'),
