@@ -6,6 +6,7 @@ import '../models/expense.dart';
 import '../models/expense_category.dart';
 
 const _incomeColor = Color(0xFF16A34A);
+const _expenseColor = Color(0xFFDC2626);
 
 class ExpenseTile extends StatelessWidget {
   final Expense expense;
@@ -89,7 +90,7 @@ class ExpenseTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: isIncome ? _incomeColor : null,
+                      color: isIncome ? _incomeColor : _expenseColor,
                     ),
                   ),
                   const SizedBox(height: 2),

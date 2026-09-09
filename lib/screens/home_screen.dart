@@ -196,6 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 14),
                   FloatingActionButton(
                     heroTag: 'add_expense',
+                    backgroundColor: Colors.red.shade600,
                     onPressed: () =>
                         _openAddSheet(TransactionType.expense, currency),
                     tooltip: 'Добавить расход',
