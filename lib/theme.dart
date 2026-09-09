@@ -8,6 +8,10 @@ const Color kIncomeColor = Color(0xFF16A34A);
 const Color kExpenseColor = Color(0xFFDC2626);
 const Color kBrandColor = Color(0xFF22C55E);
 
+/// The warm tone the background pattern is drawn in. It is always used at a
+/// very low opacity — the pattern should read as texture, never as content.
+const Color kPatternColor = Color(0xFFF97316);
+
 /// [kAccentColor] is a near-black ink tone: right on the light theme, and
 /// invisible on the dark one. Anything that paints the accent *on* the
 /// background — an icon, a tint, a hairline — has to flip with the theme,

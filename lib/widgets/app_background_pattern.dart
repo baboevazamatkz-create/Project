@@ -11,7 +11,10 @@ class AppBackgroundPattern extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = accentForeground(context).withValues(alpha: 0.05);
+    // A touch stronger on the dark theme, where a warm tone at the same
+    // opacity all but disappears against the near-black background.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = kPatternColor.withValues(alpha: isDark ? 0.09 : 0.06);
     return Stack(
       children: [
         Positioned.fill(
@@ -45,18 +48,30 @@ class _PatternPainter extends CustomPainter {
     Icons.trending_up_rounded,
     Icons.local_atm_rounded,
     Icons.percent_rounded,
+    Icons.savings_rounded,
+    Icons.account_balance_wallet_rounded,
+    Icons.currency_exchange_rounded,
+    Icons.payments_rounded,
+    Icons.shopping_cart_rounded,
+    Icons.request_quote_rounded,
+    Icons.calculate_rounded,
+    Icons.sell_rounded,
+    Icons.card_giftcard_rounded,
+    Icons.account_balance_rounded,
   ];
 
   @override
   void paint(Canvas canvas, Size size) {
     final random = math.Random(7);
-    const cell = 100.0;
+    // Smaller cells than the icons are wide, so the pattern reads as a dense
+    // texture rather than a sparse scattering.
+    const cell = 62.0;
     final cols = (size.width / cell).ceil() + 1;
     final rows = (size.height / cell).ceil() + 1;
 
     final linePaint = Paint()
       ..color = color
-      ..strokeWidth = 1.6
+      ..strokeWidth = 1.4
       ..strokeCap = StrokeCap.round;
 
     for (var row = -1; row < rows; row++) {
@@ -69,7 +84,7 @@ class _PatternPainter extends CustomPainter {
         // Occasionally draw a short decorative line/tick instead of an icon.
         if (random.nextDouble() < 0.22) {
           final angle = random.nextDouble() * math.pi;
-          final length = 16 + random.nextDouble() * 14;
+          final length = 12 + random.nextDouble() * 11;
           final dx = math.cos(angle) * length / 2;
           final dy = math.sin(angle) * length / 2;
           canvas.drawLine(
@@ -81,7 +96,7 @@ class _PatternPainter extends CustomPainter {
         }
 
         final icon = _icons[random.nextInt(_icons.length)];
-        final fontSize = 20 + random.nextDouble() * 16;
+        final fontSize = 15 + random.nextDouble() * 13;
         final rotation = (random.nextDouble() - 0.5) * math.pi / 2;
 
         final textPainter = TextPainter(
