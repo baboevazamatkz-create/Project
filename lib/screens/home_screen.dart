@@ -15,6 +15,41 @@ import '../widgets/household_switcher_sheet.dart';
 import '../widgets/summary_card.dart';
 import 'stats_screen.dart';
 
+const _tourAccent = Color(0xFF22C55E);
+
+Showcase _tourStep({
+  required GlobalKey tourKey,
+  required String title,
+  required String description,
+  required Widget child,
+  ShapeBorder targetShapeBorder = const CircleBorder(),
+  List<TooltipActionButton>? tooltipActions,
+  TooltipActionConfig? tooltipActionConfig,
+}) {
+  return Showcase(
+    key: tourKey,
+    title: title,
+    titleTextStyle: const TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: _tourAccent,
+    ),
+    description: description,
+    descTextStyle: TextStyle(
+      fontSize: 13,
+      color: Colors.black.withValues(alpha: 0.65),
+    ),
+    tooltipBackgroundColor: Colors.white,
+    tooltipBorderRadius: BorderRadius.circular(16),
+    tooltipPadding: const EdgeInsets.all(16),
+    targetShapeBorder: targetShapeBorder,
+    targetPadding: const EdgeInsets.all(4),
+    tooltipActions: tooltipActions,
+    tooltipActionConfig: tooltipActionConfig,
+    child: child,
+  );
+}
+
 class HomeScreen extends StatefulWidget {
   final Household household;
   final List<Household> households;
@@ -51,6 +86,36 @@ class _HomeScreenState extends State<HomeScreen> {
     ShowcaseView.register(
       onFinish: _markTourSeen,
       onDismiss: (_) => _markTourSeen(),
+      blurValue: 2,
+      overlayOpacity: 0.65,
+      globalTooltipActionConfig: const TooltipActionConfig(
+        position: TooltipActionPosition.inside,
+        alignment: MainAxisAlignment.spaceBetween,
+        gapBetweenContentAndAction: 14,
+      ),
+      globalTooltipActions: [
+        TooltipActionButton(
+          type: TooltipDefaultActionType.skip,
+          name: 'Пропустить',
+          backgroundColor: Colors.transparent,
+          textStyle: TextStyle(
+            color: Colors.black.withValues(alpha: 0.45),
+            fontSize: 13,
+          ),
+          hideActionWidgetForShowcase: [_switcherKey],
+        ),
+        TooltipActionButton(
+          type: TooltipDefaultActionType.next,
+          name: 'Далее',
+          backgroundColor: _tourAccent,
+          textStyle: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+          hideActionWidgetForShowcase: [_switcherKey],
+        ),
+      ],
     );
     _maybeStartTour();
   }
@@ -219,24 +284,38 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: const Icon(Icons.delete_sweep_outlined),
                     tooltip: 'Очистить бюджет',
                   ),
-                  Showcase(
-                    key: _statsKey,
+                  _tourStep(
+                    tourKey: _statsKey,
                     title: 'Статистика',
                     description:
                         'Диаграмма расходов по категориям и история за месяц',
-                    targetShapeBorder: const CircleBorder(),
                     child: IconButton(
                       onPressed: () => _openStats(expenses, currency),
                       icon: const Icon(Icons.pie_chart_rounded),
                       tooltip: 'По категориям',
                     ),
                   ),
-                  Showcase(
-                    key: _switcherKey,
+                  _tourStep(
+                    tourKey: _switcherKey,
                     title: 'Мои бюджеты',
                     description: 'Переключайтесь между бюджетами или '
                         'создайте новый, чтобы вести расходы с близкими',
-                    targetShapeBorder: const CircleBorder(),
+                    tooltipActionConfig: const TooltipActionConfig(
+                      position: TooltipActionPosition.inside,
+                      alignment: MainAxisAlignment.end,
+                    ),
+                    tooltipActions: [
+                      const TooltipActionButton(
+                        type: TooltipDefaultActionType.next,
+                        name: 'Готово',
+                        backgroundColor: _tourAccent,
+                        textStyle: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                     child: IconButton(
                       onPressed: _showHouseholdSwitcher,
                       icon: const Icon(Icons.people_alt_outlined),
@@ -248,13 +327,12 @@ class _HomeScreenState extends State<HomeScreen> {
               floatingActionButton: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Showcase(
-                    key: _expenseFabKey,
+                  _tourStep(
+                    tourKey: _expenseFabKey,
                     title: 'Добавить расход',
                     description: 'Нажмите, чтобы записать трату. Смахните '
                         'запись влево, чтобы удалить, или зажмите её, '
                         'чтобы изменить',
-                    targetShapeBorder: const CircleBorder(),
                     child: FloatingActionButton(
                       heroTag: 'add_expense',
                       backgroundColor: Colors.red.shade600,
@@ -265,11 +343,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Showcase(
-                    key: _incomeFabKey,
+                  _tourStep(
+                    tourKey: _incomeFabKey,
                     title: 'Добавить доход',
                     description: 'Нажмите, чтобы записать поступление денег',
-                    targetShapeBorder: const CircleBorder(),
                     child: FloatingActionButton(
                       heroTag: 'add_income',
                       backgroundColor: Colors.green.shade600,
@@ -289,12 +366,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           SliverPadding(
                             padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
                             sliver: SliverToBoxAdapter(
-                              child: Showcase(
-                                key: _summaryCardKey,
+                              child: _tourStep(
+                                tourKey: _summaryCardKey,
                                 title: 'Итоги',
                                 description: 'Здесь видно, сколько '
                                     'потрачено и заработано сегодня и за '
                                     'месяц',
+                                targetShapeBorder: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(24),
+                                  ),
+                                ),
                                 child: SummaryCard(
                                   todayExpenseTotal: _totalFor(
                                     expenses,
