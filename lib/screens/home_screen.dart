@@ -140,15 +140,27 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_tourSeenKey) ?? false) return;
     if (!mounted) return;
+    // A single post-frame callback isn't always enough: on some devices the
+    // very first frames still report provisional MediaQuery insets (status
+    // bar / gesture bar) before the platform settles them, so a button's
+    // on-screen position at that instant can differ from where it ends up
+    // moments later — which showed up as the highlight landing above the
+    // real button on some phones. Waiting two frames plus a short delay
+    // lets layout fully settle before the target position is captured.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ShowcaseView.get().startShowCase([
-        _expenseFabKey,
-        _incomeFabKey,
-        _summaryCardKey,
-        _statsKey,
-        _switcherKey,
-      ]);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ShowcaseView.get().startShowCase(
+          [
+            _expenseFabKey,
+            _incomeFabKey,
+            _summaryCardKey,
+            _statsKey,
+            _switcherKey,
+          ],
+          delay: const Duration(milliseconds: 300),
+        );
+      });
     });
   }
 
