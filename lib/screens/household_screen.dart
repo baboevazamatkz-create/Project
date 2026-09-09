@@ -80,34 +80,77 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
   }
 
   Future<void> _showCodeDialog(String code) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Бюджет создан'),
+        // Tinted to match the welcome screen it is opened from, rather than
+        // the plain black-on-white the Material default gives it.
+        backgroundColor: Color.alphaBlend(
+          kBrandColor.withValues(alpha: isDark ? 0.10 : 0.05),
+          Theme.of(context).dialogTheme.backgroundColor ??
+              Theme.of(context).colorScheme.surface,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: kBrandColor.withValues(alpha: 0.25)),
+        ),
+        titleTextStyle: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.normal,
+          color: kBrandColor,
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: kBrandColor, size: 22),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Бюджет создан',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Отправьте этот код супруге/супругу или коллегам, '
-                'чтобы вести бюджет вместе:'),
+            Text(
+              'Отправьте этот код супруге/супругу или коллегам, '
+              'чтобы вести бюджет вместе:',
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.color
+                    ?.withValues(alpha: 0.7),
+              ),
+            ),
             const SizedBox(height: 16),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: kBrandColor.withValues(alpha: 0.08),
+                color: kBrandColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: kBrandColor.withValues(alpha: 0.3)),
               ),
-              child: Text(
-                code,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.normal,
-                  letterSpacing: 4,
-                  color: kBrandColor,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  code,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.normal,
+                    letterSpacing: 4,
+                    color: kBrandColor,
+                  ),
                 ),
               ),
             ),
@@ -115,6 +158,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
         ),
         actions: [
           TextButton.icon(
+            style: TextButton.styleFrom(foregroundColor: kBrandColor),
             onPressed: () {
               Clipboard.setData(ClipboardData(text: code));
               ScaffoldMessenger.of(context).showSnackBar(

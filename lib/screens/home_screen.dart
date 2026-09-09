@@ -160,28 +160,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_tourSeenKey) ?? false) return;
     if (!mounted) return;
-    // A single post-frame callback isn't always enough: on some devices the
-    // very first frames still report provisional MediaQuery insets (status
-    // bar / gesture bar) before the platform settles them, so a button's
-    // on-screen position at that instant can differ from where it ends up
-    // moments later — which showed up as the highlight landing above the
-    // real button on some phones. Waiting two frames plus a short delay
-    // lets layout fully settle before the target position is captured.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ShowcaseView.get().startShowCase(
-          [
-            _expenseFabKey,
-            _incomeFabKey,
-            _summaryCardKey,
-            _statsKey,
-            _switcherKey,
-          ],
-          delay: const Duration(milliseconds: 300),
-        );
-      });
-    });
+    // Wait for two frames that have actually been rendered before capturing
+    // the first target's position: on some devices the very first frames
+    // still report provisional MediaQuery insets (status bar / gesture bar),
+    // so a button's position at that instant differs from where it settles —
+    // which is what put the highlight above the real button on one phone.
+    //
+    // This waits on endOfFrame rather than addPostFrameCallback because a
+    // post-frame callback does not ask for a frame; once the app goes idle
+    // after first paint nothing schedules one, so the tour sat waiting until
+    // a tap happened to produce a frame. endOfFrame schedules one itself.
+    for (var i = 0; i < 2; i++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+    ShowcaseView.get().startShowCase(
+      [_expenseFabKey, _incomeFabKey, _summaryCardKey, _statsKey, _switcherKey],
+      delay: const Duration(milliseconds: 250),
+    );
   }
 
   Future<void> _markTourSeen() async {
