@@ -27,15 +27,18 @@ class SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [_cardStart, _cardEnd],
+          colors: [
+            _cardStart.withValues(alpha: 0.62),
+            _cardEnd.withValues(alpha: 0.62),
+          ],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: _cardStart.withValues(alpha: 0.25),
+            color: _cardStart.withValues(alpha: 0.15),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -54,7 +57,7 @@ class SummaryCard extends StatelessWidget {
           ),
           Container(
             width: 1,
-            height: 48,
+            height: 70,
             margin: const EdgeInsets.only(top: 4),
             color: Colors.white.withValues(alpha: 0.15),
           ),
@@ -87,41 +90,54 @@ class _SummaryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final net = incomeTotal - expenseTotal;
+    const amountStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 15,
+      fontWeight: FontWeight.w700,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '${expenseTotal > 0 ? '−' : ''}${currency.format.format(expenseTotal)}',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 17,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
           ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '+${currency.format.format(incomeTotal)}',
+          style: amountStyle.copyWith(color: _incomeColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
         ),
-        if (incomeTotal > 0)
-          Text(
-            '+${currency.format.format(incomeTotal)}',
-            style: const TextStyle(
-              color: _incomeColor,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
+        const SizedBox(height: 3),
+        Text(
+          '−${currency.format.format(expenseTotal)}',
+          style: amountStyle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: 36,
+          height: 1,
+          color: Colors.white.withValues(alpha: 0.25),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${net >= 0 ? '+' : '−'}${currency.format.format(net.abs())}',
+          style: amountStyle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }
