@@ -29,7 +29,7 @@ class _PatternPainter extends CustomPainter {
   _PatternPainter({required this.color});
 
   static const _icons = [
-    Icons.savings_rounded,
+    Icons.monetization_on_rounded,
     Icons.attach_money_rounded,
     Icons.receipt_long_rounded,
     Icons.pie_chart_rounded,

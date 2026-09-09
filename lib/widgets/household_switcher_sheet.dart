@@ -109,7 +109,7 @@ class _HouseholdRow extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
-                    Icons.savings_rounded,
+                    Icons.monetization_on_rounded,
                     color: kAccentColor,
                     size: 20,
                   ),
