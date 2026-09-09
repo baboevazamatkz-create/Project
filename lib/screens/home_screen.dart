@@ -79,6 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _summaryCardKey = GlobalKey();
   final _statsKey = GlobalKey();
   final _switcherKey = GlobalKey();
+  bool _tourStarted = false;
 
   @override
   void initState() {
@@ -86,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ShowcaseView.register(
       onFinish: _markTourSeen,
       onDismiss: (_) => _markTourSeen(),
+      skipIfTargetNotPresent: true,
       blurValue: 2,
       overlayOpacity: 0.65,
       globalTooltipActionConfig: const TooltipActionConfig(
@@ -117,7 +119,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
-    _maybeStartTour();
   }
 
   @override
@@ -126,7 +127,16 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  Future<void> _maybeStartTour() async {
+  /// Starts the onboarding tour once real content is on screen.
+  ///
+  /// Waiting for [hasContent] (rather than firing on the very first frame)
+  /// matters because the summary card only exists in the tree once the
+  /// expenses stream has delivered its first snapshot — on a slow
+  /// connection that can take a while, and this package finishes the whole
+  /// tour early if a step's target isn't rendered when its turn comes up.
+  Future<void> _maybeStartTour({required bool hasContent}) async {
+    if (_tourStarted || !hasContent) return;
+    _tourStarted = true;
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_tourSeenKey) ?? false) return;
     if (!mounted) return;
@@ -275,9 +285,14 @@ class _HomeScreenState extends State<HomeScreen> {
           stream: _repository.watchExpenses(widget.household.code),
           builder: (context, snapshot) {
             final expenses = snapshot.data ?? const <Expense>[];
+            _maybeStartTour(hasContent: snapshot.hasData);
             return Scaffold(
               appBar: AppBar(
-                title: Text(widget.household.label),
+                title: Text(
+                  widget.household.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 actions: [
                   IconButton(
                     onPressed: _confirmClearAll,

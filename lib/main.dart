@@ -36,6 +36,16 @@ class ExpenseTrackerApp extends StatelessWidget {
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: ThemeMode.system,
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: mediaQuery.textScaler
+                .clamp(minScaleFactor: 0.85, maxScaleFactor: 1.25),
+          ),
+          child: child!,
+        );
+      },
       home: const AppGate(),
     );
   }
