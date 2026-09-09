@@ -23,10 +23,15 @@ class SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final baseColor = Theme.of(context).cardTheme.color ?? Colors.white;
+    final tintedColor = Color.alphaBlend(
+      const Color(0xFF22C55E).withValues(alpha: 0.06),
+      baseColor,
+    );
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
+        color: tintedColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -118,12 +123,6 @@ class _SummaryItem extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
-        Container(
-          width: 36,
-          height: 1,
-          color: Theme.of(context).dividerTheme.color,
-        ),
-        const SizedBox(height: 6),
         Text(
           'Итого',
           style: TextStyle(

@@ -6,7 +6,7 @@ import '../data/household_settings_repository.dart';
 import '../models/currency.dart';
 import '../models/household.dart';
 
-const _screenBlue = Color(0xFF4F8EF7);
+const _screenGreen = Color(0xFF22C55E);
 
 class HouseholdScreen extends StatefulWidget {
   final void Function(Household household) onReady;
@@ -89,7 +89,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: _screenBlue.withValues(alpha: 0.08),
+                color: _screenGreen.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
@@ -99,7 +99,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                   fontSize: 24,
                   fontWeight: FontWeight.normal,
                   letterSpacing: 4,
-                  color: _screenBlue,
+                  color: _screenGreen,
                 ),
               ),
             ),
@@ -117,7 +117,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
             label: const Text('Скопировать'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _screenBlue),
+            style: ElevatedButton.styleFrom(backgroundColor: _screenGreen),
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Готово'),
           ),
@@ -147,7 +147,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.normal,
-                        color: _screenBlue,
+                        color: _screenGreen,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -205,7 +205,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                     height: 52,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _screenBlue,
+                        backgroundColor: _screenGreen,
                       ),
                       onPressed: _busy ? null : _createHousehold,
                       icon: const Icon(Icons.add_circle_outline),
@@ -259,8 +259,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                     height: 52,
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: _screenBlue,
-                        side: const BorderSide(color: _screenBlue),
+                        foregroundColor: _screenGreen,
+                        side: const BorderSide(color: _screenGreen),
                       ),
                       onPressed: _busy ? null : _joinHousehold,
                       icon: const Icon(Icons.group_add_rounded),
@@ -314,11 +314,11 @@ class _CurrencyPicker extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? _screenBlue.withValues(alpha: 0.14)
+                    ? _screenGreen.withValues(alpha: 0.14)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 border: isSelected
-                    ? Border.all(color: _screenBlue.withValues(alpha: 0.4))
+                    ? Border.all(color: _screenGreen.withValues(alpha: 0.4))
                     : null,
               ),
               child: Text(
@@ -326,7 +326,7 @@ class _CurrencyPicker extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: isSelected
-                      ? _screenBlue
+                      ? _screenGreen
                       : Theme.of(context)
                           .textTheme
                           .bodyMedium
