@@ -102,6 +102,8 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
               child: Text(
                 code,
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.normal,
@@ -216,7 +218,11 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       ),
                       onPressed: _busy ? null : _createHousehold,
                       icon: const Icon(Icons.add_circle_outline),
-                      label: const Text('Создать новый бюджет'),
+                      label: const Text(
+                        'Создать новый бюджет',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -271,7 +277,11 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       ),
                       onPressed: _busy ? null : _joinHousehold,
                       icon: const Icon(Icons.group_add_rounded),
-                      label: const Text('Присоединиться по коду'),
+                      label: const Text(
+                        'Присоединиться по коду',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ],
@@ -331,6 +341,8 @@ class _CurrencyPicker extends StatelessWidget {
               child: Text(
                 '${currency.symbol} ${currency.label}',
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: isSelected
                       ? _screenGreen

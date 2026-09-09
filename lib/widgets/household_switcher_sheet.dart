@@ -63,7 +63,11 @@ class HouseholdSwitcherSheet extends StatelessWidget {
                   onAddHousehold();
                 },
                 icon: const Icon(Icons.add_circle_outline),
-                label: const Text('Добавить ещё один бюджет'),
+                label: const Text(
+                  'Добавить ещё один бюджет',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
           ],
@@ -121,6 +125,8 @@ class _HouseholdRow extends StatelessWidget {
                     children: [
                       Text(
                         household.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.normal,
@@ -129,6 +135,8 @@ class _HouseholdRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         household.code,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
                           letterSpacing: 1,

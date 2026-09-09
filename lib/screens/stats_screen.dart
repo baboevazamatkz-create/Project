@@ -247,6 +247,8 @@ class _CategoriesTab extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         currency.format.format(total),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.normal,
@@ -323,18 +325,26 @@ class _CategoryRow extends StatelessWidget {
                 Expanded(
                   child: Text(
                     category.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontSize: 14, fontWeight: FontWeight.normal),
                   ),
                 ),
-                Text(
-                  budgetValue != null
-                      ? '${currency.format.format(amount)} / ${currency.format.format(budgetValue)}'
-                      : currency.format.format(amount),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.normal,
-                    color: isOverBudget ? Colors.red.shade600 : null,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    budgetValue != null
+                        ? '${currency.format.format(amount)} / ${currency.format.format(budgetValue)}'
+                        : currency.format.format(amount),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.normal,
+                      color: isOverBudget ? Colors.red.shade600 : null,
+                    ),
                   ),
                 ),
               ],
