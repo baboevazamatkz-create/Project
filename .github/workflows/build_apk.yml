@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  # Lets a build be re-run from the Actions tab without a code change --
+  # useful right after changing the signing secrets.
+  workflow_dispatch:
 
 jobs:
   build:
@@ -26,6 +29,24 @@ jobs:
           flutter-version: '3.47.2'
           cache: true
 
+      - name: Set up release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::KEYSTORE_BASE64 is not set - the APK gets a throwaway debug key and will not install over a previous build."
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=upload
+          keyPassword=$KEYSTORE_PASSWORD
+          EOF
+          echo "Release keystore installed."
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -37,6 +58,21 @@ jobs:
 
       - name: Build release APK
         run: flutter build apk --release
+
+      # Printed so the signing certificate can be compared between runs: if
+      # this digest ever changes, updates will stop installing over the
+      # previous version.
+      - name: Report signing certificate
+        run: |
+          sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          apksigner=$(find "$sdk" -name apksigner -type f 2>/dev/null | sort -V | tail -1)
+          if [ -z "$apksigner" ]; then
+            echo "apksigner not found; skipping."
+            exit 0
+          fi
+          "$apksigner" verify --print-certs \
+            build/app/outputs/flutter-apk/app-release.apk \
+            | grep -i 'SHA-256 digest' || true
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
