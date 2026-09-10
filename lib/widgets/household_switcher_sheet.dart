@@ -40,7 +40,11 @@ class HouseholdSwitcherSheet extends StatelessWidget {
             ),
             const Text(
               'Мои бюджеты',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.normal,
+                color: kBrandColor,
+              ),
             ),
             const SizedBox(height: 16),
             for (final household in households)
@@ -58,6 +62,10 @@ class HouseholdSwitcherSheet extends StatelessWidget {
             SizedBox(
               height: 52,
               child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: kBrandColor,
+                  side: const BorderSide(color: kBrandColor),
+                ),
                 onPressed: () {
                   Navigator.of(context).pop();
                   onAddHousehold();
@@ -90,78 +98,90 @@ class _HouseholdRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = accentForeground(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: isActive ? accent.withValues(alpha: 0.08) : Colors.transparent,
+        color:
+            isActive ? kBrandColor.withValues(alpha: 0.12) : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: isActive
+                  ? Border.all(color: kBrandColor.withValues(alpha: 0.35))
+                  : null,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: kBrandColor.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.monetization_on_rounded,
+                      color: kBrandColor,
+                      size: 20,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.monetization_on_rounded,
-                    color: accent,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        household.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.normal,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          household.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.normal,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        household.code,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          letterSpacing: 1,
-                          color: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.color
-                              ?.withValues(alpha: 0.5),
+                        const SizedBox(height: 2),
+                        Text(
+                          household.code,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            letterSpacing: 1,
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.color
+                                ?.withValues(alpha: 0.5),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                if (isActive)
-                  Icon(Icons.check_circle_rounded, color: accent)
-                else
-                  IconButton(
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: household.code));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Код скопирован')),
-                      );
-                    },
-                    icon: const Icon(Icons.copy_rounded, size: 18),
-                  ),
-              ],
+                  if (isActive)
+                    const Icon(Icons.check_circle_rounded, color: kBrandColor)
+                  else
+                    IconButton(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: household.code));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Код скопирован')),
+                        );
+                      },
+                      // Muted green rather than the default ink, so it sits
+                      // below the active row's check in the sheet's
+                      // hierarchy.
+                      color: kBrandColor.withValues(alpha: 0.7),
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
