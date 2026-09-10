@@ -271,6 +271,92 @@ void main() {
       ),
     ),
   );
+
+  group('convertApprox', () {
+    test('same currency is returned unchanged, not just approximately equal',
+        () {
+      expect(convertApprox(12345, from: AppCurrency.usd, to: AppCurrency.usd),
+          12345);
+    });
+
+    test('round-tripping through another currency returns to the original', () {
+      const original = 50000.0;
+      final toUsd =
+          convertApprox(original, from: AppCurrency.rub, to: AppCurrency.usd);
+      final back =
+          convertApprox(toUsd, from: AppCurrency.usd, to: AppCurrency.rub);
+      expect(back, closeTo(original, 0.001));
+    });
+
+    test('a dollar is worth many more tenge than one, in that direction', () {
+      final kzt = convertApprox(1, from: AppCurrency.usd, to: AppCurrency.kzt);
+      expect(kzt, greaterThan(100));
+    });
+  });
+
+  testWidgets('Summary card marks converted totals as approximate',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SummaryCard(
+            todayExpenseTotal: 1000,
+            todayIncomeTotal: 2000,
+            monthExpenseTotal: 1000,
+            monthIncomeTotal: 2000,
+            currency: AppCurrency.usd,
+            isApproximate: true,
+          ),
+        ),
+      ),
+    );
+    expect(find.textContaining('≈'), findsWidgets);
+  });
+
+  testWidgets('Summary card does not mark exact totals as approximate',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SummaryCard(
+            todayExpenseTotal: 1000,
+            todayIncomeTotal: 2000,
+            monthExpenseTotal: 1000,
+            monthIncomeTotal: 2000,
+            currency: AppCurrency.rub,
+          ),
+        ),
+      ),
+    );
+    expect(find.textContaining('≈'), findsNothing);
+  });
+
+  testWidgets('Expense row shows the override amount, not the recorded one',
+      (tester) async {
+    final expense = Expense(
+      id: 'c',
+      amount: 1000,
+      date: DateTime(2026, 9, 1),
+      category: ExpenseCategory.food,
+      type: TransactionType.expense,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ExpenseTile(
+            expense: expense,
+            currency: AppCurrency.usd,
+            amountOverride: 11.63,
+            isApproximate: true,
+          ),
+        ),
+      ),
+    );
+    // The recorded amount (1000 RUB) must not appear; only the converted
+    // override, marked approximate, should render.
+    expect(find.textContaining('1 000'), findsNothing);
+    expect(find.textContaining('≈'), findsWidgets);
+  });
 }
 
 final _categoryEntries = <MapEntry<ExpenseCategory, double>>[

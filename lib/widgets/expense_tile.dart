@@ -13,11 +13,23 @@ class ExpenseTile extends StatelessWidget {
   final AppCurrency currency;
   final VoidCallback? onLongPress;
 
+  /// The amount to display, if it differs from [expense.amount] -- used
+  /// when the list is being viewed in a currency other than the one the
+  /// expense was actually recorded in. [expense.amount] itself never
+  /// changes; only the displayed figure does.
+  final double? amountOverride;
+
+  /// True when [amountOverride] is a currency conversion rather than the
+  /// recorded amount, so the row can mark itself as approximate.
+  final bool isApproximate;
+
   const ExpenseTile({
     super.key,
     required this.expense,
     required this.currency,
     this.onLongPress,
+    this.amountOverride,
+    this.isApproximate = false,
   });
 
   @override
@@ -28,6 +40,8 @@ class ExpenseTile extends StatelessWidget {
         isIncome ? Icons.arrow_downward_rounded : expense.category!.icon;
     final title = isIncome ? 'Доход' : expense.category!.label;
     final sign = isIncome ? '+' : '−';
+    final displayAmount = amountOverride ?? expense.amount;
+    final approxPrefix = isApproximate ? '≈ ' : '';
     final mutedColor =
         Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6);
 
@@ -99,7 +113,7 @@ class ExpenseTile extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerRight,
                           child: Text(
-                            '$sign${currency.format.format(expense.amount)}',
+                            '$approxPrefix$sign${currency.format.format(displayAmount)}',
                             maxLines: 1,
                             softWrap: false,
                             style: TextStyle(

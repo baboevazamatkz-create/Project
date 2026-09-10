@@ -10,6 +10,11 @@ class SummaryCard extends StatelessWidget {
   final double monthIncomeTotal;
   final AppCurrency currency;
 
+  /// True when [currency] differs from the currency these totals were
+  /// actually recorded in, so the figures are a converted approximation
+  /// rather than exact sums. Shown as a small "≈" marker.
+  final bool isApproximate;
+
   const SummaryCard({
     super.key,
     required this.todayExpenseTotal,
@@ -17,6 +22,7 @@ class SummaryCard extends StatelessWidget {
     required this.monthExpenseTotal,
     required this.monthIncomeTotal,
     required this.currency,
+    this.isApproximate = false,
   });
 
   @override
@@ -48,6 +54,7 @@ class SummaryCard extends StatelessWidget {
               expenseTotal: todayExpenseTotal,
               incomeTotal: todayIncomeTotal,
               currency: currency,
+              isApproximate: isApproximate,
             ),
           ),
           Container(
@@ -62,6 +69,7 @@ class SummaryCard extends StatelessWidget {
               expenseTotal: monthExpenseTotal,
               incomeTotal: monthIncomeTotal,
               currency: currency,
+              isApproximate: isApproximate,
             ),
           ),
         ],
@@ -75,12 +83,14 @@ class _SummaryItem extends StatelessWidget {
   final double expenseTotal;
   final double incomeTotal;
   final AppCurrency currency;
+  final bool isApproximate;
 
   const _SummaryItem({
     required this.label,
     required this.expenseTotal,
     required this.incomeTotal,
     required this.currency,
+    this.isApproximate = false,
   });
 
   @override
@@ -92,6 +102,8 @@ class _SummaryItem extends StatelessWidget {
       fontSize: 13,
       fontWeight: FontWeight.normal,
     );
+    // Marks converted figures so they don't read as exact sums.
+    String approx(String amount) => isApproximate ? '≈ $amount' : amount;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -108,7 +120,7 @@ class _SummaryItem extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          '+${currency.format.format(incomeTotal)}',
+          approx('+${currency.format.format(incomeTotal)}'),
           style: amountStyle.copyWith(color: kIncomeColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -116,7 +128,7 @@ class _SummaryItem extends StatelessWidget {
         ),
         const SizedBox(height: 3),
         Text(
-          '−${currency.format.format(expenseTotal)}',
+          approx('−${currency.format.format(expenseTotal)}'),
           style: amountStyle.copyWith(color: kExpenseColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -132,9 +144,11 @@ class _SummaryItem extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          net >= 0
-              ? currency.format.format(net)
-              : '−${currency.format.format(net.abs())}',
+          approx(
+            net >= 0
+                ? currency.format.format(net)
+                : '−${currency.format.format(net.abs())}',
+          ),
           style: amountStyle.copyWith(
             color: net >= 0 ? kIncomeColor : kExpenseColor,
           ),
