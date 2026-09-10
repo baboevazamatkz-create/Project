@@ -1,3 +1,9 @@
+# Publishes the web build to GitHub Pages.
+#
+# Prerequisite, done once by hand: Settings -> Pages -> Source must be set to
+# "GitHub Actions". The default GITHUB_TOKEN cannot create the Pages site
+# itself -- actions/configure-pages with enablement: true fails with
+# "Resource not accessible by integration" -- so there is no point trying.
 name: Deploy web app
 
 on:
@@ -51,11 +57,6 @@ jobs:
       # file or directory whose name starts with an underscore.
       - name: Disable Jekyll processing
         run: touch build/web/.nojekyll
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
