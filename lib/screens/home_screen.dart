@@ -80,6 +80,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final _switcherKey = GlobalKey();
   bool _tourStarted = false;
 
+  // null means "show amounts in the household's own currency" (exact,
+  // no conversion). Set when the user taps the currency toggle; reset
+  // whenever the household changes, so switching budgets never leaves a
+  // stale conversion showing.
+  AppCurrency? _displayCurrency;
+
   // Held in fields rather than created inside build(): a stream built during
   // build is a brand-new Firestore listener on every rebuild, which drops the
   // loaded data back to a spinner and re-reads the collection each time.
@@ -145,6 +151,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final code = widget.household.code;
     _currencyStream = _settingsRepository.watchCurrency(code);
     _expensesStream = _repository.watchExpenses(code);
+    _displayCurrency = null;
+  }
+
+  /// Steps the currency-view toggle to the next currency: household's own
+  /// (exact) -> the other two (converted) -> back to household's own.
+  void _cycleDisplayCurrency(AppCurrency householdCurrency) {
+    final order = [
+      householdCurrency,
+      ...AppCurrency.values.where((c) => c != householdCurrency),
+    ];
+    final current = _displayCurrency ?? householdCurrency;
+    final next = order[(order.indexOf(current) + 1) % order.length];
+    setState(() {
+      _displayCurrency = next == householdCurrency ? null : next;
+    });
   }
 
   /// Starts the onboarding tour once real content is on screen.
@@ -305,6 +326,49 @@ class _HomeScreenState extends State<HomeScreen> {
     return totals;
   }
 
+  /// Compact pill in the AppBar: tap to step through currencies. Shown
+  /// filled when displaying a converted (approximate) currency, outlined
+  /// when showing the household's own.
+  Widget _currencyToggleButton(AppCurrency householdCurrency) {
+    final display = _displayCurrency ?? householdCurrency;
+    final isConverted = display != householdCurrency;
+    return Tooltip(
+      message: isConverted
+          ? 'Показано по среднему курсу, не биржевому.\n'
+              'Валюта бюджета: ${householdCurrency.label}'
+          : 'Показать в другой валюте (по среднему курсу)',
+      child: InkResponse(
+        onTap: () => _cycleDisplayCurrency(householdCurrency),
+        radius: 24,
+        child: Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: isConverted
+                  ? kBrandColor.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: kBrandColor.withValues(alpha: isConverted ? 0.5 : 0.3),
+              ),
+            ),
+            child: Text(
+              display.symbol,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: kBrandColor,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<AppCurrency>(
@@ -316,6 +380,20 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context, snapshot) {
             final expenses = snapshot.data ?? const <Expense>[];
             final totals = _totals(expenses);
+            final displayCurrency = _displayCurrency ?? currency;
+            final isConverted = displayCurrency != currency;
+            final displayTotals = isConverted
+                ? _Totals(
+                    todayIncome: convertApprox(totals.todayIncome,
+                        from: currency, to: displayCurrency),
+                    todayExpense: convertApprox(totals.todayExpense,
+                        from: currency, to: displayCurrency),
+                    monthIncome: convertApprox(totals.monthIncome,
+                        from: currency, to: displayCurrency),
+                    monthExpense: convertApprox(totals.monthExpense,
+                        from: currency, to: displayCurrency),
+                  )
+                : totals;
             _maybeStartTour(hasContent: snapshot.hasData);
             return Scaffold(
               appBar: AppBar(
@@ -325,6 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 actions: [
+                  _currencyToggleButton(currency),
                   IconButton(
                     onPressed: _confirmClearAll,
                     icon: const Icon(Icons.delete_sweep_outlined),
@@ -424,11 +503,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 child: SummaryCard(
-                                  todayExpenseTotal: totals.todayExpense,
-                                  todayIncomeTotal: totals.todayIncome,
-                                  monthExpenseTotal: totals.monthExpense,
-                                  monthIncomeTotal: totals.monthIncome,
-                                  currency: currency,
+                                  todayExpenseTotal: displayTotals.todayExpense,
+                                  todayIncomeTotal: displayTotals.todayIncome,
+                                  monthExpenseTotal: displayTotals.monthExpense,
+                                  monthIncomeTotal: displayTotals.monthIncome,
+                                  currency: displayCurrency,
+                                  isApproximate: isConverted,
                                 ),
                               ),
                             ),
@@ -448,6 +528,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     const SizedBox(height: 10),
                                 itemBuilder: (context, index) {
                                   final expense = expenses[index];
+                                  final tileAmount = isConverted
+                                      ? convertApprox(expense.amount,
+                                          from: currency, to: displayCurrency)
+                                      : null;
                                   return Dismissible(
                                     key: ValueKey(expense.id),
                                     direction: DismissDirection.endToStart,
@@ -466,7 +550,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     onDismissed: (_) => _deleteExpense(expense),
                                     child: ExpenseTile(
                                       expense: expense,
-                                      currency: currency,
+                                      currency: displayCurrency,
+                                      amountOverride: tileAmount,
+                                      isApproximate: isConverted,
                                       onLongPress: () => _openAddSheet(
                                         expense.type,
                                         currency,
