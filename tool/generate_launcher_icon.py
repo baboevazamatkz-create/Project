@@ -47,6 +47,11 @@ DENSITIES = {
     'xxxhdpi': 192,
 }
 
+# Web/PWA icons. "opaque" ones are painted on a solid background because iOS
+# renders a transparent home-screen icon on black, and a maskable icon has to
+# fill its whole box for the launcher to crop it.
+WEB_BACKGROUND = (255, 255, 255, 255)
+
 
 def _s(v):
     return int(round(v * SS))
@@ -133,6 +138,51 @@ def build(font_path=DEFAULT_FONT):
     return _centre(art).resize((S, S), Image.LANCZOS, reducing_gap=3.0)
 
 
+def build_opaque(icon, size, margin_ratio, background=WEB_BACKGROUND):
+    """Places the icon on a solid background, inset by `margin_ratio`.
+
+    A maskable icon needs a wide inset: launchers may crop up to 20% off every
+    edge, so the artwork has to sit inside the middle circle.
+    """
+    canvas = Image.new('RGBA', (size, size), background)
+    inner = max(1, int(size * (1 - 2 * margin_ratio)))
+    art = icon.resize((inner, inner), Image.LANCZOS, reducing_gap=3.0)
+    offset = (size - inner) // 2
+    canvas.alpha_composite(art, (offset, offset))
+    return canvas
+
+
+def write_web_icons(icon, root):
+    """Writes the PWA icon set into web/."""
+    web = os.path.join(root, 'web')
+    icons = os.path.join(web, 'icons')
+    os.makedirs(icons, exist_ok=True)
+
+    written = []
+
+    def save(img, path):
+        img.save(path, optimize=True)
+        written.append(path)
+
+    # Transparent, for browsers that composite the icon themselves.
+    save(icon.resize((32, 32), Image.LANCZOS), os.path.join(web, 'favicon.png'))
+    for size in (192, 512):
+        save(icon.resize((size, size), Image.LANCZOS, reducing_gap=3.0),
+             os.path.join(icons, f'Icon-{size}.png'))
+
+    # Maskable: opaque and inset, so cropping never clips the wallet.
+    for size in (192, 512):
+        save(build_opaque(icon, size, margin_ratio=0.18),
+             os.path.join(icons, f'Icon-maskable-{size}.png'))
+
+    # iOS home screen. Transparency would render as black here, and iOS
+    # rounds the corners itself, so this stays a filled square.
+    save(build_opaque(icon, 180, margin_ratio=0.10),
+         os.path.join(icons, 'apple-touch-icon-180.png'))
+
+    return written
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--font', default=DEFAULT_FONT,
@@ -140,6 +190,8 @@ def main():
     parser.add_argument('--preview', metavar='PATH',
                         help='write a single 1024px PNG here instead of '
                              'updating the project icons')
+    parser.add_argument('--web', action='store_true',
+                        help='also refresh the PWA icons under web/')
     args = parser.parse_args()
 
     icon = build(args.font)
@@ -164,6 +216,13 @@ def main():
                    [(0, 0), (px - 1, 0), (0, px - 1), (px - 1, px - 1)]]
         assert max(corners) == 0, f'{path} is not transparent: {corners}'
         print(f'{bucket:8} {px:3}px  {path}')
+
+    if args.web:
+        project_root = os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))
+        for path in write_web_icons(icon, project_root):
+            written = Image.open(path)
+            print(f'web      {written.size[0]:3}px  {path}')
 
 
 if __name__ == '__main__':
