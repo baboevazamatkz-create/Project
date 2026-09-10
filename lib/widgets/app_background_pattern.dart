@@ -14,7 +14,7 @@ class AppBackgroundPattern extends StatelessWidget {
     // A touch stronger on the dark theme, where a warm tone at the same
     // opacity all but disappears against the near-black background.
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = kPatternColor.withValues(alpha: isDark ? 0.09 : 0.06);
+    final color = kPatternColor.withValues(alpha: isDark ? 0.13 : 0.10);
     return Stack(
       children: [
         Positioned.fill(

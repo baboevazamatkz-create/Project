@@ -181,8 +181,17 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-          widget.canCancel ? AppBar(title: const Text('Новый бюджет')) : null,
+      appBar: widget.canCancel
+          ? AppBar(
+              title: const Text('Новый бюджет'),
+              foregroundColor: kBrandColor,
+              titleTextStyle: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.normal,
+                color: kBrandColor,
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),

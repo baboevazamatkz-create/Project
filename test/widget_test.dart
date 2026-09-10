@@ -98,6 +98,8 @@ void main() {
 
   testWidgets('Budget switcher icons stay visible on the dark theme',
       (tester) async {
+    // The sheet is drawn in the brand green rather than the near-black ink
+    // accent, which used to disappear into the dark background entirely.
     await _pumpAt(
       tester,
       Scaffold(
@@ -119,12 +121,12 @@ void main() {
     final checkIcon = tester.widget<Icon>(
       find.byIcon(Icons.check_circle_rounded),
     );
-    expect(checkIcon.color, Colors.white);
+    expect(checkIcon.color, kBrandColor);
 
     final coinIcon = tester.widget<Icon>(
       find.byIcon(Icons.monetization_on_rounded).first,
     );
-    expect(coinIcon.color, Colors.white);
+    expect(coinIcon.color, kBrandColor);
   });
 
   testAcrossScreens(
