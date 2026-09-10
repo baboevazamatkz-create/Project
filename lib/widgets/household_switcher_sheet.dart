@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/currency.dart';
 import '../models/household.dart';
 import '../theme.dart';
+import 'currency_symbol_icon.dart';
 
 class HouseholdSwitcherSheet extends StatelessWidget {
   final List<Household> households;
@@ -10,12 +12,19 @@ class HouseholdSwitcherSheet extends StatelessWidget {
   final ValueChanged<String> onSwitch;
   final VoidCallback onAddHousehold;
 
+  /// The active budget's currency. Every row's leading icon shows this
+  /// symbol (not each budget's own currency, which isn't loaded for
+  /// anything but the active one) -- a currency-shaped "this is a budget"
+  /// glyph rather than a fixed, possibly-wrong dollar sign.
+  final AppCurrency currency;
+
   const HouseholdSwitcherSheet({
     super.key,
     required this.households,
     required this.activeCode,
     required this.onSwitch,
     required this.onAddHousehold,
+    required this.currency,
   });
 
   @override
@@ -51,6 +60,7 @@ class HouseholdSwitcherSheet extends StatelessWidget {
               _HouseholdRow(
                 household: household,
                 isActive: household.code == activeCode,
+                currency: currency,
                 onTap: () {
                   Navigator.of(context).pop();
                   if (household.code != activeCode) {
@@ -88,11 +98,13 @@ class HouseholdSwitcherSheet extends StatelessWidget {
 class _HouseholdRow extends StatelessWidget {
   final Household household;
   final bool isActive;
+  final AppCurrency currency;
   final VoidCallback onTap;
 
   const _HouseholdRow({
     required this.household,
     required this.isActive,
+    required this.currency,
     required this.onTap,
   });
 
@@ -126,8 +138,8 @@ class _HouseholdRow extends StatelessWidget {
                       color: kBrandColor.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.monetization_on_rounded,
+                    child: CurrencySymbolIcon(
+                      currency: currency,
                       color: kBrandColor,
                       size: 20,
                     ),
