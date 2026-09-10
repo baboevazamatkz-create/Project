@@ -229,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showHouseholdSwitcher() {
+  void _showHouseholdSwitcher(AppCurrency currency) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -241,6 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
         activeCode: widget.household.code,
         onSwitch: widget.onSwitchHousehold,
         onAddHousehold: widget.onAddHousehold,
+        currency: currency,
       ),
     );
   }
@@ -406,7 +407,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   _currencyToggleButton(currency),
                   IconButton(
                     onPressed: _confirmClearAll,
-                    icon: const Icon(Icons.delete_sweep_outlined),
+                    icon: const Icon(Icons.delete_sweep_outlined,
+                        color: kBrandColor),
                     tooltip: 'Очистить бюджет',
                   ),
                   _tourStep(
@@ -416,7 +418,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         'Диаграмма расходов по категориям и история за месяц',
                     child: IconButton(
                       onPressed: () => _openStats(expenses, currency),
-                      icon: const Icon(Icons.pie_chart_rounded),
+                      icon: const Icon(Icons.pie_chart_rounded,
+                          color: kBrandColor),
                       tooltip: 'По категориям',
                     ),
                   ),
@@ -442,8 +445,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                     child: IconButton(
-                      onPressed: _showHouseholdSwitcher,
-                      icon: const Icon(Icons.people_alt_outlined),
+                      onPressed: () => _showHouseholdSwitcher(currency),
+                      icon: const Icon(Icons.people_alt_outlined,
+                          color: kBrandColor),
                       tooltip: 'Мои бюджеты',
                     ),
                   ),

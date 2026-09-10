@@ -8,6 +8,7 @@ import '../models/expense.dart';
 import '../models/expense_category.dart';
 import '../models/transaction_type.dart';
 import '../theme.dart';
+import 'currency_symbol_icon.dart';
 
 final _dateFormat = DateFormat('d MMMM y', 'ru');
 
@@ -190,7 +191,10 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               decoration: InputDecoration(
                 hintText: 'Сумма, ${widget.currency.symbol}',
                 errorText: _errorText,
-                prefixIcon: const Icon(Icons.payments_outlined),
+                // The currency's own symbol, not a generic money icon --
+                // wrong to imply "dollar" when the budget is in rubles or
+                // tenge.
+                prefixIcon: CurrencySymbolIcon(currency: widget.currency),
               ),
               onChanged: (_) {
                 if (_errorText != null) setState(() => _errorText = null);

@@ -13,6 +13,7 @@ import 'package:expense_tracker/screens/stats_screen.dart';
 import 'package:expense_tracker/theme.dart';
 import 'package:expense_tracker/widgets/add_expense_sheet.dart';
 import 'package:expense_tracker/widgets/expense_tile.dart';
+import 'package:expense_tracker/widgets/currency_symbol_icon.dart';
 import 'package:expense_tracker/widgets/household_switcher_sheet.dart';
 import 'package:expense_tracker/widgets/summary_card.dart';
 
@@ -109,6 +110,7 @@ void main() {
             Household(code: 'EFGH6789', label: 'Работа'),
           ],
           activeCode: 'ABCD2345',
+          currency: AppCurrency.rub,
           onSwitch: (_) {},
           onAddHousehold: () {},
         ),
@@ -123,10 +125,15 @@ void main() {
     );
     expect(checkIcon.color, kBrandColor);
 
-    final coinIcon = tester.widget<Icon>(
-      find.byIcon(Icons.monetization_on_rounded).first,
+    // The coin icon was replaced by the currency's own symbol (see
+    // CurrencySymbolIcon); check that took the same colour.
+    final symbolText = tester.widget<Text>(
+      find.descendant(
+        of: find.byType(CurrencySymbolIcon).first,
+        matching: find.byType(Text),
+      ),
     );
-    expect(coinIcon.color, kBrandColor);
+    expect(symbolText.style?.color, kBrandColor);
   });
 
   testAcrossScreens(
@@ -182,6 +189,7 @@ void main() {
           Household(code: 'EFGH6789', label: 'Работа'),
         ],
         activeCode: 'ABCD2345',
+        currency: AppCurrency.kzt,
         onSwitch: (_) {},
         onAddHousehold: () {},
       ),
