@@ -31,6 +31,15 @@ class HouseholdSettingsRepository {
     return snapshot.data()?['label'] as String?;
   }
 
+  /// A one-time read rather than [watchCurrency]'s live stream -- used to
+  /// label each budget in the switcher list with its own currency, where a
+  /// permanent listener per budget would outlive the sheet for no benefit
+  /// (nothing in the app ever changes a budget's currency after creation).
+  Future<AppCurrency> fetchCurrency(String householdCode) async {
+    final snapshot = await _doc(householdCode).get();
+    return AppCurrencyX.fromStorageKey(snapshot.data()?['currency'] as String?);
+  }
+
   Future<void> clearAllExpenses(String householdCode) async {
     final collection = _firestore
         .collection('households')

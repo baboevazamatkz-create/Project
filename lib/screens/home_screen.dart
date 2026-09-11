@@ -80,6 +80,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final _switcherKey = GlobalKey();
   bool _tourStarted = false;
 
+  // Each budget's own currency, fetched once (not a live stream -- nothing
+  // in the app changes a budget's currency after creation) the first time
+  // the switcher needs it, and kept here so reopening the switcher doesn't
+  // re-fetch on every tap.
+  final Map<String, AppCurrency> _householdCurrencies = {};
+  bool _switcherLoading = false;
+
   // null means "show amounts in the household's own currency" (exact,
   // no conversion). Set when the user taps the currency toggle; reset
   // whenever the household changes, so switching budgets never leaves a
@@ -229,7 +236,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showHouseholdSwitcher(AppCurrency currency) {
+  Future<void> _showHouseholdSwitcher() async {
+    final missing = widget.households
+        .where((h) => !_householdCurrencies.containsKey(h.code))
+        .toList();
+    if (missing.isNotEmpty) {
+      setState(() => _switcherLoading = true);
+      final fetched = await Future.wait(
+        missing.map((h) => _settingsRepository.fetchCurrency(h.code)),
+      );
+      for (var i = 0; i < missing.length; i++) {
+        _householdCurrencies[missing[i].code] = fetched[i];
+      }
+      if (!mounted) return;
+      setState(() => _switcherLoading = false);
+    }
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -239,9 +261,9 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => HouseholdSwitcherSheet(
         households: widget.households,
         activeCode: widget.household.code,
+        currencies: _householdCurrencies,
         onSwitch: widget.onSwitchHousehold,
         onAddHousehold: widget.onAddHousehold,
-        currency: currency,
       ),
     );
   }
@@ -449,8 +471,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                     child: IconButton(
-                      onPressed: () => _showHouseholdSwitcher(currency),
-                      icon: const Icon(Icons.people_alt_outlined),
+                      onPressed:
+                          _switcherLoading ? null : _showHouseholdSwitcher,
+                      icon: _switcherLoading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.people_alt_outlined),
                       tooltip: 'Мои бюджеты',
                     ),
                   ),

@@ -110,7 +110,10 @@ void main() {
             Household(code: 'EFGH6789', label: 'Работа'),
           ],
           activeCode: 'ABCD2345',
-          currency: AppCurrency.rub,
+          currencies: const {
+            'ABCD2345': AppCurrency.rub,
+            'EFGH6789': AppCurrency.usd,
+          },
           onSwitch: (_) {},
           onAddHousehold: () {},
         ),
@@ -134,6 +137,48 @@ void main() {
       ),
     );
     expect(symbolText.style?.color, kBrandColor);
+  });
+
+  testWidgets(
+      'Budget switcher shows each budget\'s own currency, not the active one',
+      (tester) async {
+    // A ruble budget and a dollar budget in the same list: the icon on
+    // each row must match that row's own currency, not whichever budget
+    // happens to be open (activeCode is the ruble one here).
+    await _pumpAt(
+      tester,
+      Scaffold(
+        body: HouseholdSwitcherSheet(
+          households: const [
+            Household(code: 'ABCD2345', label: 'Семья'),
+            Household(code: 'EFGH6789', label: 'Доллары'),
+          ],
+          activeCode: 'ABCD2345',
+          currencies: const {
+            'ABCD2345': AppCurrency.rub,
+            'EFGH6789': AppCurrency.usd,
+          },
+          onSwitch: (_) {},
+          onAddHousehold: () {},
+        ),
+      ),
+      size: _screenSizes['modern phone']!,
+      textScale: 1.0,
+    );
+
+    final symbols = tester
+        .widgetList<Text>(find.descendant(
+          of: find.byType(CurrencySymbolIcon),
+          matching: find.byType(Text),
+        ))
+        .map((t) => t.data)
+        .toList();
+    expect(
+        symbols,
+        containsAll(<String>[
+          AppCurrency.rub.symbol,
+          AppCurrency.usd.symbol,
+        ]));
   });
 
   testAcrossScreens(
@@ -189,7 +234,10 @@ void main() {
           Household(code: 'EFGH6789', label: 'Работа'),
         ],
         activeCode: 'ABCD2345',
-        currency: AppCurrency.kzt,
+        currencies: const {
+          'ABCD2345': AppCurrency.kzt,
+          'EFGH6789': AppCurrency.rub,
+        },
         onSwitch: (_) {},
         onAddHousehold: () {},
       ),
