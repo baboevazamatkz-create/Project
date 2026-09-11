@@ -12,11 +12,11 @@ class HouseholdSwitcherSheet extends StatelessWidget {
   final ValueChanged<String> onSwitch;
   final VoidCallback onAddHousehold;
 
-  /// The active budget's currency. Every row's leading icon shows this
-  /// symbol (not each budget's own currency, which isn't loaded for
-  /// anything but the active one) -- a currency-shaped "this is a budget"
-  /// glyph rather than a fixed, possibly-wrong dollar sign.
-  final AppCurrency currency;
+  /// Each budget's own currency, keyed by household code -- every row
+  /// shows the symbol for *that* budget, chosen once when it was created,
+  /// not whichever budget happens to be open right now. A code missing
+  /// from the map (still loading, or an edge case) falls back to RUB.
+  final Map<String, AppCurrency> currencies;
 
   const HouseholdSwitcherSheet({
     super.key,
@@ -24,7 +24,7 @@ class HouseholdSwitcherSheet extends StatelessWidget {
     required this.activeCode,
     required this.onSwitch,
     required this.onAddHousehold,
-    required this.currency,
+    this.currencies = const {},
   });
 
   @override
@@ -60,7 +60,7 @@ class HouseholdSwitcherSheet extends StatelessWidget {
               _HouseholdRow(
                 household: household,
                 isActive: household.code == activeCode,
-                currency: currency,
+                currency: currencies[household.code] ?? AppCurrency.rub,
                 onTap: () {
                   Navigator.of(context).pop();
                   if (household.code != activeCode) {
