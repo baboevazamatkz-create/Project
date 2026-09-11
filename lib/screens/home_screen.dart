@@ -327,9 +327,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return totals;
   }
 
-  /// Compact pill in the AppBar: tap to step through currencies. Shown
-  /// filled when displaying a converted (approximate) currency, outlined
-  /// when showing the household's own.
+  /// Same plain glyph treatment as the other AppBar icons -- it is the
+  /// budget's own currency symbol, not a filled pill, so it reads as one
+  /// of the toolbar's icons rather than a separate loud control. A small
+  /// dot is the only accent, and only appears once the toggle has actually
+  /// been switched away from the household's own currency.
   Widget _currencyToggleButton(AppCurrency householdCurrency) {
     final display = _displayCurrency ?? householdCurrency;
     final isConverted = display != householdCurrency;
@@ -341,29 +343,33 @@ class _HomeScreenState extends State<HomeScreen> {
       child: InkResponse(
         onTap: () => _cycleDisplayCurrency(householdCurrency),
         radius: 24,
-        child: Container(
+        child: SizedBox(
           width: 44,
           height: 44,
-          alignment: Alignment.center,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              color: isConverted
-                  ? kBrandColor.withValues(alpha: 0.14)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: kBrandColor.withValues(alpha: isConverted ? 0.5 : 0.3),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Text(
+                display.symbol,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: accentForeground(context),
+                ),
               ),
-            ),
-            child: Text(
-              display.symbol,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-                color: kBrandColor,
-              ),
-            ),
+              if (isConverted)
+                Positioned(
+                  bottom: 9,
+                  child: Container(
+                    width: 5,
+                    height: 5,
+                    decoration: const BoxDecoration(
+                      color: kBrandColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -407,8 +413,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _currencyToggleButton(currency),
                   IconButton(
                     onPressed: _confirmClearAll,
-                    icon: const Icon(Icons.delete_sweep_outlined,
-                        color: kBrandColor),
+                    icon: const Icon(Icons.delete_sweep_outlined),
                     tooltip: 'Очистить бюджет',
                   ),
                   _tourStep(
@@ -418,8 +423,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         'Диаграмма расходов по категориям и история за месяц',
                     child: IconButton(
                       onPressed: () => _openStats(expenses, currency),
-                      icon: const Icon(Icons.pie_chart_rounded,
-                          color: kBrandColor),
+                      icon: const Icon(Icons.pie_chart_rounded),
                       tooltip: 'По категориям',
                     ),
                   ),
@@ -446,8 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                     child: IconButton(
                       onPressed: () => _showHouseholdSwitcher(currency),
-                      icon: const Icon(Icons.people_alt_outlined,
-                          color: kBrandColor),
+                      icon: const Icon(Icons.people_alt_outlined),
                       tooltip: 'Мои бюджеты',
                     ),
                   ),
