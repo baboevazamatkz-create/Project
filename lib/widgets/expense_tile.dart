@@ -134,7 +134,7 @@ class ExpenseTile extends StatelessWidget {
                               maxLines: 1,
                               softWrap: false,
                               style: moneyStyle(
-                                size: 10,
+                                size: 13,
                                 weight: FontWeight.w500,
                                 color: isIncome
                                     ? incomeColor(context)
@@ -151,7 +151,7 @@ class ExpenseTile extends StatelessWidget {
                               maxLines: 1,
                               softWrap: false,
                               style: TextStyle(
-                                fontSize: 5.5,
+                                fontSize: 7.2,
                                 height: 1.15,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.5,
