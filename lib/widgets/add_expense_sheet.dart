@@ -201,7 +201,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                 hintStyle: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w300,
-                  color: accentForeground(context).withValues(alpha: 0.28),
+                  color: accentForeground(context).withValues(alpha: 0.4),
                 ),
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 18),

@@ -386,20 +386,41 @@ class _CategoryRow extends StatelessWidget {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
-                        child: Text(
-                          budgetValue != null
-                              ? '${currency.format.format(amount)} / ${currency.format.format(budgetValue)}'
-                              : currency.format.format(amount),
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: currency.format.format(amount),
+                                // Only the figure that broke the limit is
+                                // loud; the limit itself stays quiet, so the
+                                // row says what is wrong rather than just
+                                // turning red.
+                                style: moneyStyle(
+                                  size: isOverBudget ? 15 : 14,
+                                  weight: isOverBudget
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isOverBudget
+                                      ? expenseColor(context)
+                                      : accentForeground(context)
+                                          .withValues(alpha: 0.85),
+                                ),
+                              ),
+                              if (budgetValue != null)
+                                TextSpan(
+                                  text:
+                                      ' / ${currency.format.format(budgetValue)}',
+                                  style: moneyStyle(
+                                    size: 14,
+                                    weight: FontWeight.w500,
+                                    color: accentForeground(context)
+                                        .withValues(alpha: 0.55),
+                                  ),
+                                ),
+                            ],
+                          ),
                           maxLines: 1,
                           softWrap: false,
-                          style: moneyStyle(
-                            size: 14,
-                            weight: FontWeight.w500,
-                            color: isOverBudget
-                                ? expenseColor(context)
-                                : accentForeground(context)
-                                    .withValues(alpha: 0.85),
-                          ),
                         ),
                       ),
                     ),
@@ -442,13 +463,16 @@ class HistoryTab extends StatelessWidget {
     required this.monthLabel,
   });
 
-  static const _lowColor = kChampagne;
-  static const _highColor = kExpenseColor;
-
-  Color _colorForValue(double value, double maxValue) {
-    if (maxValue <= 0) return _lowColor;
+  /// Champagne for a quiet month, terracotta for the worst one. Both ends
+  /// are picked per theme: the deep terracotta that reads on paper turns
+  /// into near-black-on-near-black in the dark, which is what made the
+  /// tallest bar disappear.
+  Color _colorForValue(BuildContext context, double value, double maxValue) {
+    final low = goldFor(context);
+    final high = expenseColor(context);
+    if (maxValue <= 0) return low;
     final t = (value / maxValue).clamp(0.0, 1.0);
-    return Color.lerp(_lowColor, _highColor, t)!;
+    return Color.lerp(low, high, t)!;
   }
 
   @override
@@ -492,6 +516,29 @@ class HistoryTab extends StatelessWidget {
                 maxY: maxValue * 1.2,
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
+                // The default tooltip is a grey slab that takes its text
+                // colour from the bar, which on a dark bar is unreadable.
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (_) =>
+                        Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF2A2831)
+                            : kAccentColor,
+                    tooltipRoundedRadius: 10,
+                    tooltipPadding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) =>
+                        BarTooltipItem(
+                      currency.format.format(rod.toY),
+                      const TextStyle(
+                        fontFamily: 'Onest',
+                        color: Color(0xFFF4F1EA),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false)),
@@ -511,7 +558,12 @@ class HistoryTab extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             monthLabel(monthlyTotals[index].key),
-                            style: const TextStyle(fontSize: 11),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: accentForeground(context)
+                                  .withValues(alpha: 0.65),
+                            ),
                           ),
                         );
                       },
@@ -525,10 +577,18 @@ class HistoryTab extends StatelessWidget {
                       barRods: [
                         BarChartRodData(
                           toY: monthlyTotals[i].value,
-                          color:
-                              _colorForValue(monthlyTotals[i].value, maxValue),
+                          color: _colorForValue(
+                              context, monthlyTotals[i].value, maxValue),
                           width: 22,
                           borderRadius: BorderRadius.circular(6),
+                          // A faint track behind each bar, so a small month
+                          // still reads as a bar rather than as nothing.
+                          backDrawRodData: BackgroundBarChartRodData(
+                            show: true,
+                            toY: maxValue * 1.2,
+                            color: accentForeground(context)
+                                .withValues(alpha: 0.05),
+                          ),
                         ),
                       ],
                     ),

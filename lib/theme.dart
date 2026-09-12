@@ -151,7 +151,7 @@ TextStyle microLabel(BuildContext context,
       fontSize: size,
       fontWeight: FontWeight.w600,
       letterSpacing: 1.3,
-      color: color ?? accentForeground(context).withValues(alpha: 0.45),
+      color: color ?? accentForeground(context).withValues(alpha: 0.58),
     );
 
 /// Figures are always tabular: money that shifts sideways as the digits
@@ -265,7 +265,7 @@ ThemeData buildAppTheme(Brightness brightness) {
         ),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      hintStyle: TextStyle(color: ink.withValues(alpha: 0.32)),
+      hintStyle: TextStyle(color: ink.withValues(alpha: 0.42)),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -274,7 +274,7 @@ ThemeData buildAppTheme(Brightness brightness) {
         backgroundColor: isDark ? kChampagne : kAccentColor,
         foregroundColor: isDark ? kAccentColor : const Color(0xFFF6F2EA),
         elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 17),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 17),
         textStyle: const TextStyle(
           fontFamily: 'Onest',
           fontSize: 15,
@@ -287,6 +287,7 @@ ThemeData buildAppTheme(Brightness brightness) {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: ink.withValues(alpha: 0.7),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         textStyle: const TextStyle(
           fontFamily: 'Onest',
           fontSize: 14,
@@ -353,7 +354,7 @@ ThemeData buildAppTheme(Brightness brightness) {
         fontSize: 11,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.6,
-        color: ink.withValues(alpha: 0.45),
+        color: ink.withValues(alpha: 0.6),
       ),
       dayStyle: const TextStyle(
         fontFamily: 'Onest',
@@ -394,6 +395,7 @@ ThemeData buildAppTheme(Brightness brightness) {
       dividerColor: hairline,
       cancelButtonStyle: TextButton.styleFrom(
         foregroundColor: ink.withValues(alpha: 0.7),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         textStyle: const TextStyle(
           fontFamily: 'Onest',
           fontSize: 14,
@@ -402,6 +404,7 @@ ThemeData buildAppTheme(Brightness brightness) {
       ),
       confirmButtonStyle: TextButton.styleFrom(
         foregroundColor: isDark ? kChampagne : kGoldDeep,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         textStyle: const TextStyle(
           fontFamily: 'Onest',
           fontSize: 14,

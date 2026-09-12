@@ -499,6 +499,34 @@ class _HomeScreenState extends State<HomeScreen> {
     return monthChanged ? _monthDivider(next) : const SizedBox(height: 7);
   }
 
+  /// Wiping the budget lives in the bottom-left corner rather than in the
+  /// app bar: it is the only destructive action on this screen, and it has
+  /// no business sitting a few millimetres from the buttons people press
+  /// several times a day.
+  Widget _clearButton() {
+    return Tooltip(
+      message: 'Очистить бюджет',
+      child: Material(
+        color: glassFill(context),
+        shape: CircleBorder(side: BorderSide(color: glassEdge(context))),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _confirmClearAll,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(
+              Icons.delete_sweep_outlined,
+              size: 20,
+              color: accentForeground(context).withValues(alpha: 0.55),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Flips the app between Ivory and Obsidian, first in the actions row.
   Widget _themeToggleButton() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -796,80 +824,105 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               body: AppBackgroundPattern(
-                child: !snapshot.hasData
-                    ? const Center(child: CircularProgressIndicator())
-                    // The totals stay put and only the history moves: the
-                    // card is the one thing on this screen you want to be
-                    // able to read while scrolling through everything else.
-                    : Column(
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              20,
-                              MediaQuery.of(context).padding.top +
-                                  kToolbarHeight +
-                                  10,
-                              20,
-                              8,
-                            ),
-                            child: _tourStep(
-                              tourKey: _summaryCardKey,
-                              title: 'Итоги',
-                              description: 'Здесь видно, сколько '
-                                  'потрачено и заработано сегодня и за '
-                                  'месяц',
-                              targetShapeBorder: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(24),
+                child: Stack(
+                  children: [
+                    !snapshot.hasData
+                        ? const Center(child: CircularProgressIndicator())
+                        // The totals stay put and only the history moves: the
+                        // card is the one thing on this screen you want to be
+                        // able to read while scrolling through everything else.
+                        : Column(
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  20,
+                                  MediaQuery.of(context).padding.top +
+                                      kToolbarHeight +
+                                      10,
+                                  20,
+                                  8,
                                 ),
-                              ),
-                              child: SummaryCard(
-                                todayExpenseTotal: displayTotals.todayExpense,
-                                todayIncomeTotal: displayTotals.todayIncome,
-                                monthExpenseTotal: displayTotals.monthExpense,
-                                monthIncomeTotal: displayTotals.monthIncome,
-                                currency: displayCurrency,
-                                isApproximate: isConverted,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: CustomScrollView(
-                              slivers: [
-                                if (_groupedByCategory)
-                                  ..._buildGroupedSlivers(
-                                    expenses: expenses,
-                                    currency: currency,
-                                    displayCurrency: displayCurrency,
-                                    isConverted: isConverted,
-                                  )
-                                else if (expenses.isEmpty)
-                                  const SliverFillRemaining(
-                                    hasScrollBody: false,
-                                    child: _EmptyState(),
-                                  )
-                                else
-                                  SliverPadding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        24, 0, 24, 100),
-                                    sliver: SliverList.separated(
-                                      itemCount: expenses.length,
-                                      separatorBuilder: (context, index) =>
-                                          _buildSeparator(expenses, index),
-                                      itemBuilder: (context, index) =>
-                                          _buildExpenseRow(
-                                        expenses[index],
-                                        currency: currency,
-                                        displayCurrency: displayCurrency,
-                                        isConverted: isConverted,
-                                      ),
+                                child: _tourStep(
+                                  tourKey: _summaryCardKey,
+                                  title: 'Итоги',
+                                  description: 'Здесь видно, сколько '
+                                      'потрачено и заработано сегодня и за '
+                                      'месяц',
+                                  targetShapeBorder:
+                                      const RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(24),
                                     ),
                                   ),
-                              ],
-                            ),
+                                  child: SummaryCard(
+                                    todayExpenseTotal:
+                                        displayTotals.todayExpense,
+                                    todayIncomeTotal: displayTotals.todayIncome,
+                                    monthExpenseTotal:
+                                        displayTotals.monthExpense,
+                                    monthIncomeTotal: displayTotals.monthIncome,
+                                    currency: displayCurrency,
+                                    isApproximate: isConverted,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                // Rows slide up under the totals card and
+                                // dissolve there. Without this the list is simply
+                                // clipped at the card's edge, which reads as a
+                                // rendering mistake rather than as depth.
+                                child: ShaderMask(
+                                  shaderCallback: (rect) =>
+                                      const LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [Colors.transparent, Colors.black],
+                                    stops: [0.0, 0.045],
+                                  ).createShader(rect),
+                                  blendMode: BlendMode.dstIn,
+                                  child: CustomScrollView(
+                                    slivers: [
+                                      if (_groupedByCategory)
+                                        ..._buildGroupedSlivers(
+                                          expenses: expenses,
+                                          currency: currency,
+                                          displayCurrency: displayCurrency,
+                                          isConverted: isConverted,
+                                        )
+                                      else if (expenses.isEmpty)
+                                        const SliverFillRemaining(
+                                          hasScrollBody: false,
+                                          child: _EmptyState(),
+                                        )
+                                      else
+                                        SliverPadding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              24, 0, 24, 100),
+                                          sliver: SliverList.separated(
+                                            itemCount: expenses.length,
+                                            separatorBuilder:
+                                                (context, index) =>
+                                                    _buildSeparator(
+                                                        expenses, index),
+                                            itemBuilder: (context, index) =>
+                                                _buildExpenseRow(
+                                              expenses[index],
+                                              currency: currency,
+                                              displayCurrency: displayCurrency,
+                                              isConverted: isConverted,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                    if (snapshot.hasData)
+                      Positioned(left: 22, bottom: 26, child: _clearButton()),
+                  ],
+                ),
               ),
             );
           },
@@ -920,7 +973,7 @@ class _EmptyState extends StatelessWidget {
             Icon(
               Icons.receipt_long_outlined,
               size: 56,
-              color: accentForeground(context).withValues(alpha: 0.4),
+              color: accentForeground(context).withValues(alpha: 0.55),
             ),
             const SizedBox(height: 16),
             Text(
