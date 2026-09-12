@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
 
 import '../data/expense_repository.dart';
 import '../data/household_settings_repository.dart';
+import '../models/category_group.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/household.dart';
@@ -15,6 +17,18 @@ import '../widgets/household_switcher_sheet.dart';
 import '../theme.dart';
 import '../widgets/summary_card.dart';
 import 'stats_screen.dart';
+
+final _monthDividerFormat = DateFormat('LLLL', 'ru');
+
+/// "Сентябрь" for the current year, "Сентябрь 2025" once it isn't -- the
+/// label on a divider marking where one month's entries end and an older
+/// month's begin in the chronological list. Not private, so it can be
+/// unit-tested directly rather than only indirectly through a widget.
+String monthDividerLabel(DateTime date) {
+  final raw = _monthDividerFormat.format(date);
+  final month = raw.isEmpty ? raw : raw[0].toUpperCase() + raw.substring(1);
+  return date.year == DateTime.now().year ? month : '$month ${date.year}';
+}
 
 Showcase _tourStep({
   required GlobalKey tourKey,
@@ -92,6 +106,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // whenever the household changes, so switching budgets never leaves a
   // stale conversion showing.
   AppCurrency? _displayCurrency;
+
+  // Off shows the full chronological history; on restricts to the current
+  // month and clusters it by category instead. Not persisted -- it is a
+  // way of looking at the list, not a setting worth remembering across
+  // app launches, and the flat list is the safer default to reopen on.
+  bool _groupedByCategory = false;
 
   // Held in fields rather than created inside build(): a stream built during
   // build is a brand-new Firestore listener on every rebuild, which drops the
@@ -351,9 +371,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Same plain glyph treatment as the other AppBar icons -- it is the
   /// budget's own currency symbol, not a filled pill, so it reads as one
-  /// of the toolbar's icons rather than a separate loud control. A small
-  /// dot is the only accent, and only appears once the toggle has actually
-  /// been switched away from the household's own currency.
+  /// of the toolbar's icons rather than a separate loud control. The only
+  /// accent is a thin ring around it, and only once the toggle has
+  /// actually been switched away from the household's own currency; the
+  /// ring is always painted (transparent when off) so the button's size
+  /// never shifts when it turns on.
   Widget _currencyToggleButton(AppCurrency householdCurrency) {
     final display = _displayCurrency ?? householdCurrency;
     final isConverted = display != householdCurrency;
@@ -368,10 +390,19 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SizedBox(
           width: 44,
           height: 44,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Text(
+          child: Center(
+            child: Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isConverted ? kBrandColor : Colors.transparent,
+                  width: 1.4,
+                ),
+              ),
+              child: Text(
                 display.symbol,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
@@ -379,23 +410,231 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: accentForeground(context),
                 ),
               ),
-              if (isConverted)
-                Positioned(
-                  bottom: 9,
-                  child: Container(
-                    width: 5,
-                    height: 5,
-                    decoration: const BoxDecoration(
-                      color: kBrandColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The swipe-to-delete / long-press-to-edit row shared by both the flat
+  /// chronological list and the grouped-by-category view, so the two
+  /// views can never drift out of sync on how a row behaves.
+  Widget _buildExpenseRow(
+    Expense expense, {
+    required AppCurrency currency,
+    required AppCurrency displayCurrency,
+    required bool isConverted,
+  }) {
+    final tileAmount = isConverted
+        ? convertApprox(expense.amount, from: currency, to: displayCurrency)
+        : null;
+    return Dismissible(
+      key: ValueKey(expense.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: kExpenseColor,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+      ),
+      onDismissed: (_) => _deleteExpense(expense),
+      child: ExpenseTile(
+        expense: expense,
+        currency: displayCurrency,
+        amountOverride: tileAmount,
+        isApproximate: isConverted,
+        onLongPress: () =>
+            _openAddSheet(expense.type, currency, existing: expense),
+      ),
+    );
+  }
+
+  /// A thin rule with the month's name where the chronological list steps
+  /// from one month into an older one; a plain gap everywhere else.
+  Widget _buildSeparator(List<Expense> expenses, int index) {
+    final current = expenses[index].date;
+    final next = expenses[index + 1].date;
+    final monthChanged =
+        current.year != next.year || current.month != next.month;
+    if (!monthChanged) return const SizedBox(height: 10);
+    final dividerColor = Theme.of(context).dividerTheme.color;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: dividerColor)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              monthDividerLabel(next),
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.color
+                    ?.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          Expanded(child: Divider(color: dividerColor)),
+        ],
+      ),
+    );
+  }
+
+  /// Right-aligned pill above the list: tap to flip between the plain
+  /// chronological history and this month's entries clustered by
+  /// category. Labelled with the view a tap switches *to*, and outlined
+  /// only while the grouped view is the one showing -- the same
+  /// on-means-ringed language as the currency toggle. The border is
+  /// always painted (transparent when off) so the pill's size never
+  /// shifts when the mode flips.
+  Widget _viewModeToggle() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => setState(() => _groupedByCategory = !_groupedByCategory),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: _groupedByCategory ? kBrandColor : Colors.transparent,
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _groupedByCategory
+                    ? Icons.receipt_long_rounded
+                    : Icons.grid_view_rounded,
+                size: 15,
+                color: accentForeground(context).withValues(alpha: 0.75),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _groupedByCategory ? 'Список' : 'По категориям',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: accentForeground(context).withValues(alpha: 0.75),
                 ),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// The header row above each category's (or income's) transactions in
+  /// the grouped view: icon, name and that category's total for the
+  /// month, converted and marked approximate exactly like everywhere
+  /// else a total is shown.
+  Widget _groupHeader(
+    CategoryGroup group, {
+    required AppCurrency currency,
+    required AppCurrency displayCurrency,
+    required bool isConverted,
+  }) {
+    final total = isConverted
+        ? convertApprox(group.total, from: currency, to: displayCurrency)
+        : group.total;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, top: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: group.color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(group.icon, color: group.color, size: 17),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              group.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              '${isConverted ? '≈ ' : ''}${displayCurrency.format.format(total)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: group.color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The grouped view's content: a flat list of headers and rows built up
+  /// front rather than windowed, since a single month's transactions for
+  /// a small household are never large enough for that to matter.
+  List<Widget> _buildGroupedSlivers({
+    required List<Expense> expenses,
+    required AppCurrency currency,
+    required AppCurrency displayCurrency,
+    required bool isConverted,
+  }) {
+    final groups = buildCategoryGroups(expenses, month: DateTime.now());
+    if (groups.isEmpty) {
+      // Distinct from the flat list's empty state: there may well be
+      // history in other months, just none this one.
+      return const [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _EmptyState(message: 'В этом месяце пока нет записей'),
+        ),
+      ];
+    }
+    final rows = <Widget>[];
+    for (final group in groups) {
+      rows.add(_groupHeader(
+        group,
+        currency: currency,
+        displayCurrency: displayCurrency,
+        isConverted: isConverted,
+      ));
+      for (final expense in group.items) {
+        rows.add(_buildExpenseRow(
+          expense,
+          currency: currency,
+          displayCurrency: displayCurrency,
+          isConverted: isConverted,
+        ));
+        rows.add(const SizedBox(height: 10));
+      }
+      rows.add(const SizedBox(height: 14));
+    }
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+        sliver: SliverList(delegate: SliverChildListDelegate(rows)),
+      ),
+    ];
   }
 
   @override
@@ -551,7 +790,20 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
-                          if (expenses.isEmpty)
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
+                            sliver: SliverToBoxAdapter(
+                              child: _viewModeToggle(),
+                            ),
+                          ),
+                          if (_groupedByCategory)
+                            ..._buildGroupedSlivers(
+                              expenses: expenses,
+                              currency: currency,
+                              displayCurrency: displayCurrency,
+                              isConverted: isConverted,
+                            )
+                          else if (expenses.isEmpty)
                             const SliverFillRemaining(
                               hasScrollBody: false,
                               child: _EmptyState(),
@@ -562,43 +814,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const EdgeInsets.fromLTRB(24, 8, 24, 100),
                               sliver: SliverList.separated(
                                 itemCount: expenses.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 10),
-                                itemBuilder: (context, index) {
-                                  final expense = expenses[index];
-                                  final tileAmount = isConverted
-                                      ? convertApprox(expense.amount,
-                                          from: currency, to: displayCurrency)
-                                      : null;
-                                  return Dismissible(
-                                    key: ValueKey(expense.id),
-                                    direction: DismissDirection.endToStart,
-                                    background: Container(
-                                      alignment: Alignment.centerRight,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 20),
-                                      decoration: BoxDecoration(
-                                        color: kExpenseColor,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: const Icon(
-                                          Icons.delete_outline_rounded,
-                                          color: Colors.white),
-                                    ),
-                                    onDismissed: (_) => _deleteExpense(expense),
-                                    child: ExpenseTile(
-                                      expense: expense,
-                                      currency: displayCurrency,
-                                      amountOverride: tileAmount,
-                                      isApproximate: isConverted,
-                                      onLongPress: () => _openAddSheet(
-                                        expense.type,
-                                        currency,
-                                        existing: expense,
-                                      ),
-                                    ),
-                                  );
-                                },
+                                separatorBuilder: (context, index) =>
+                                    _buildSeparator(expenses, index),
+                                itemBuilder: (context, index) =>
+                                    _buildExpenseRow(
+                                  expenses[index],
+                                  currency: currency,
+                                  displayCurrency: displayCurrency,
+                                  isConverted: isConverted,
+                                ),
                               ),
                             ),
                         ],
@@ -640,7 +864,9 @@ class _Totals {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final String message;
+
+  const _EmptyState({this.message = 'Пока нет расходов'});
 
   @override
   Widget build(BuildContext context) {
@@ -657,7 +883,8 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Пока нет расходов',
+              message,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.normal,
