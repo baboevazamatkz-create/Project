@@ -54,14 +54,14 @@ class ExpenseTile extends StatelessWidget {
     final ink = accentForeground(context);
 
     return GlassPanel(
-      radius: 18,
+      radius: 14,
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
           onLongPress: onLongPress,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: EdgeInsets.fromLTRB(showIcon ? 14 : 18, 13, 18, 13),
+            padding: EdgeInsets.fromLTRB(showIcon ? 10 : 14, 6, 14, 6),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 // The amount is given a share of the row rather than whatever it
@@ -73,8 +73,8 @@ class ExpenseTile extends StatelessWidget {
                   children: [
                     if (showIcon) ...[
                       Container(
-                        width: 40,
-                        height: 40,
+                        width: 28,
+                        height: 28,
                         decoration: BoxDecoration(
                           color: accent.withValues(alpha: 0.13),
                           shape: BoxShape.circle,
@@ -83,9 +83,9 @@ class ExpenseTile extends StatelessWidget {
                             width: 1,
                           ),
                         ),
-                        child: Icon(icon, color: accent, size: 19),
+                        child: Icon(icon, color: accent, size: 15),
                       ),
-                      const SizedBox(width: 13),
+                      const SizedBox(width: 10),
                     ],
                     Expanded(
                       child: Column(
@@ -96,20 +96,22 @@ class ExpenseTile extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 14.5,
+                              fontSize: 13.5,
+                              height: 1.15,
                               fontWeight: FontWeight.w500,
                               letterSpacing: -0.1,
                               color: ink.withValues(alpha: 0.92),
                             ),
                           ),
                           if (expense.note.isNotEmpty) ...[
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 1),
                             Text(
                               expense.note,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12.5,
+                                fontSize: 11.5,
+                                height: 1.15,
                                 fontWeight: FontWeight.w400,
                                 color: ink.withValues(alpha: 0.48),
                               ),
@@ -132,7 +134,7 @@ class ExpenseTile extends StatelessWidget {
                               maxLines: 1,
                               softWrap: false,
                               style: moneyStyle(
-                                size: 15,
+                                size: 14,
                                 weight: FontWeight.w500,
                                 color: isIncome
                                     ? incomeColor(context)
@@ -140,7 +142,7 @@ class ExpenseTile extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 1),
                           FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerRight,
@@ -149,7 +151,8 @@ class ExpenseTile extends StatelessWidget {
                               maxLines: 1,
                               softWrap: false,
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 9.5,
+                                height: 1.15,
                                 fontWeight: FontWeight.w500,
                                 letterSpacing: 0.7,
                                 color: ink.withValues(alpha: 0.38),

@@ -496,7 +496,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final next = expenses[index + 1].date;
     final monthChanged =
         current.year != next.year || current.month != next.month;
-    return monthChanged ? _monthDivider(next) : const SizedBox(height: 10);
+    return monthChanged ? _monthDivider(next) : const SizedBox(height: 7);
   }
 
   /// Flips the app between Ivory and Obsidian, first in the actions row.
@@ -639,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen> {
             isConverted: isConverted,
             showIcon: false,
           ));
-          rows.add(const SizedBox(height: 10));
+          rows.add(const SizedBox(height: 7));
         }
         rows.add(const SizedBox(height: 14));
       }
