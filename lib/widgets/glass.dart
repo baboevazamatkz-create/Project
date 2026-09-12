@@ -76,9 +76,8 @@ class GlassPanel extends StatelessWidget {
   }
 }
 
-/// The same glass, shaped for a modal sheet: rounded at the top only, and
-/// always frosted -- the screen it slides over is exactly the content that
-/// should blur behind it.
+/// A modal sheet: rounded at the top, solid, with a lit top edge. Not
+/// glass -- see [sheetSurface].
 class GlassSheet extends StatelessWidget {
   final Widget child;
 
@@ -89,24 +88,21 @@ class GlassSheet extends StatelessWidget {
     const corner = BorderRadius.vertical(top: Radius.circular(28));
     return ClipRRect(
       borderRadius: corner,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: corner,
-            gradient: sheetBodyGradient(context),
-            border: Border(
-              top: BorderSide(
-                color: Colors.white.withValues(
-                  alpha: Theme.of(context).brightness == Brightness.dark
-                      ? 0.16
-                      : 0.75,
-                ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: corner,
+          color: sheetSurface(context),
+          border: Border(
+            top: BorderSide(
+              color: Colors.white.withValues(
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? 0.16
+                    : 0.75,
               ),
             ),
           ),
-          child: child,
         ),
+        child: child,
       ),
     );
   }

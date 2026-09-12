@@ -126,24 +126,12 @@ Color glassEdge(BuildContext context) => _isDark(context)
     ? Colors.white.withValues(alpha: 0.13)
     : Colors.white.withValues(alpha: 0.85);
 
-/// A sheet is a bigger, calmer pane than a row: same material, less of a
-/// gradient, so long content does not sit on a visible ramp.
-LinearGradient sheetBodyGradient(BuildContext context) {
-  final isDark = _isDark(context);
-  return LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: isDark
-        ? [
-            const Color(0xFF24232B).withValues(alpha: 0.52),
-            const Color(0xFF16151B).withValues(alpha: 0.62)
-          ]
-        : [
-            Colors.white.withValues(alpha: 0.50),
-            const Color(0xFFF7F3EC).withValues(alpha: 0.60)
-          ],
-  );
-}
+/// A sheet is solid. It was glass for a while and read as muddy: a sheet
+/// covers the screen precisely so you can stop looking at the screen, and
+/// the form on it has small text and small controls that want a settled
+/// background rather than a moving one.
+Color sheetSurface(BuildContext context) =>
+    _isDark(context) ? const Color(0xFF1B1A21) : const Color(0xFFFBF8F2);
 
 /// The app bar floats over the scrolling list, so it is the one surface
 /// that genuinely needs frosting rather than translucency alone.

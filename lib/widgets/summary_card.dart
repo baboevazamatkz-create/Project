@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../models/currency.dart';
@@ -68,108 +66,110 @@ class SummaryCard extends StatelessWidget {
       padding: const EdgeInsets.all(1),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: heroGradientFor(context),
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: Stack(
-              children: [
-                // Two pools of light across the slab: a broad one from the
-                // top-left, and a tighter, brighter one riding the upper edge --
-                // the way light actually sits on a curved glass surface.
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          center: const Alignment(-0.85, -1.1),
-                          radius: 1.5,
-                          colors: [
-                            Colors.white.withValues(
-                              alpha: Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? 0.10
-                                  : 0.30,
-                            ),
-                            Colors.white.withValues(alpha: 0),
-                          ],
-                        ),
+        // No BackdropFilter here on purpose. What sits behind this card is
+        // the page's own static wash, so frosting it changed almost
+        // nothing on screen -- while a second backdrop filter (the app bar
+        // has the one that earns its keep) re-sampled the scene on every
+        // touch and made the card visibly flicker.
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: heroGradientFor(context),
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: Stack(
+            children: [
+              // Two pools of light across the slab: a broad one from the
+              // top-left, and a tighter, brighter one riding the upper edge --
+              // the way light actually sits on a curved glass surface.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(-0.85, -1.1),
+                        radius: 1.5,
+                        colors: [
+                          Colors.white.withValues(
+                            alpha:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? 0.10
+                                    : 0.30,
+                          ),
+                          Colors.white.withValues(alpha: 0),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  height: 70,
-                  child: IgnorePointer(
-                    child: DecoratedBox(
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                height: 70,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withValues(
+                            alpha:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? 0.07
+                                    : 0.22,
+                          ),
+                          Colors.white.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _SummaryItem(
+                        label: 'СЕГОДНЯ',
+                        expenseTotal: todayExpenseTotal,
+                        incomeTotal: todayIncomeTotal,
+                        currency: currency,
+                        isApproximate: isApproximate,
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 92,
+                      margin: const EdgeInsets.symmetric(horizontal: 18),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.white.withValues(
-                              alpha: Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? 0.07
-                                  : 0.22,
-                            ),
-                            Colors.white.withValues(alpha: 0),
+                            heroForeground(context).withValues(alpha: 0),
+                            heroForeground(context).withValues(alpha: 0.16),
+                            heroForeground(context).withValues(alpha: 0),
                           ],
                         ),
                       ),
                     ),
-                  ),
+                    Expanded(
+                      child: _SummaryItem(
+                        label: 'ЗА МЕСЯЦ',
+                        expenseTotal: monthExpenseTotal,
+                        incomeTotal: monthIncomeTotal,
+                        currency: currency,
+                        isApproximate: isApproximate,
+                      ),
+                    ),
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: _SummaryItem(
-                          label: 'СЕГОДНЯ',
-                          expenseTotal: todayExpenseTotal,
-                          incomeTotal: todayIncomeTotal,
-                          currency: currency,
-                          isApproximate: isApproximate,
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 92,
-                        margin: const EdgeInsets.symmetric(horizontal: 18),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              heroForeground(context).withValues(alpha: 0),
-                              heroForeground(context).withValues(alpha: 0.16),
-                              heroForeground(context).withValues(alpha: 0),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: _SummaryItem(
-                          label: 'ЗА МЕСЯЦ',
-                          expenseTotal: monthExpenseTotal,
-                          incomeTotal: monthIncomeTotal,
-                          currency: currency,
-                          isApproximate: isApproximate,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
