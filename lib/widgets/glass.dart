@@ -47,7 +47,7 @@ class GlassPanel extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(radius - 1),
-            gradient: glassBodyGradient(context),
+            color: glassFill(context),
           ),
           child: Padding(
             padding: padding ?? EdgeInsets.zero,
