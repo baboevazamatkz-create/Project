@@ -136,7 +136,7 @@ class ExpenseTile extends StatelessWidget {
                                 weight: FontWeight.w500,
                                 color: isIncome
                                     ? incomeColor(context)
-                                    : ink.withValues(alpha: 0.9),
+                                    : expenseColor(context),
                               ),
                             ),
                           ),

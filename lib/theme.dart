@@ -81,38 +81,33 @@ LinearGradient pageGradient(BuildContext context) {
 /// The hero card is obsidian in *both* themes: a dark, faintly metallic
 /// panel on ivory paper is the single strongest "this is expensive" cue the
 /// screen has, and on Obsidian it simply reads as a raised slab.
-const LinearGradient heroGradient = LinearGradient(
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-  colors: [Color(0xFF2A2831), Color(0xFF171620), Color(0xFF101014)],
-  stops: [0.0, 0.55, 1.0],
-);
+///
+/// It is translucent, and frosts what is behind it -- enough for the page's
+/// light and grain to come through the glass, not so much that white text
+/// on it stops being white text on something dark.
+LinearGradient heroGradientFor(BuildContext context) {
+  final alpha = _isDark(context) ? 0.72 : 0.80;
+  return LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      const Color(0xFF2A2831).withValues(alpha: alpha - 0.06),
+      const Color(0xFF171620).withValues(alpha: alpha),
+      const Color(0xFF101014).withValues(alpha: alpha),
+    ],
+    stops: const [0.0, 0.55, 1.0],
+  );
+}
 
 /// Text sitting on the hero card, which is dark regardless of theme.
 const Color kOnHero = Color(0xFFF4F1EA);
 
-/// The body of a pane of glass: lighter at the top, thinner at the bottom,
-/// so the pane reads as a slab catching the light from above rather than a
-/// flat wash of semi-transparent colour.
-LinearGradient glassBodyGradient(BuildContext context) {
-  final isDark = _isDark(context);
-  return LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: isDark
-        ? [
-            Colors.white.withValues(alpha: 0.10),
-            Colors.white.withValues(alpha: 0.045),
-            Colors.white.withValues(alpha: 0.025),
-          ]
-        : [
-            Colors.white.withValues(alpha: 0.78),
-            Colors.white.withValues(alpha: 0.55),
-            Colors.white.withValues(alpha: 0.42),
-          ],
-    stops: const [0.0, 0.5, 1.0],
-  );
-}
+/// The body of a pane of glass: one even translucent fill. It used to be a
+/// gradient, which on a list of rows read as each row being lit from its own
+/// corner -- busy, and the thing that made the list look tilted.
+Color glassFill(BuildContext context) => _isDark(context)
+    ? Colors.white.withValues(alpha: 0.055)
+    : Colors.white.withValues(alpha: 0.58);
 
 /// The lit edge around it: bright where the light lands, nearly gone on the
 /// far side. This one gradient is most of what separates glass from a
@@ -146,12 +141,12 @@ LinearGradient sheetBodyGradient(BuildContext context) {
     end: Alignment.bottomCenter,
     colors: isDark
         ? [
-            const Color(0xFF24232B).withValues(alpha: 0.88),
-            const Color(0xFF16151B).withValues(alpha: 0.94)
+            const Color(0xFF24232B).withValues(alpha: 0.74),
+            const Color(0xFF16151B).withValues(alpha: 0.82)
           ]
         : [
-            Colors.white.withValues(alpha: 0.88),
-            const Color(0xFFF7F3EC).withValues(alpha: 0.94)
+            Colors.white.withValues(alpha: 0.72),
+            const Color(0xFFF7F3EC).withValues(alpha: 0.80)
           ],
   );
 }
@@ -241,8 +236,8 @@ ThemeData buildAppTheme(Brightness brightness) {
     // at full width left the app bar title truncated on a phone.
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(
-        padding: const EdgeInsets.all(6),
-        minimumSize: const Size(36, 36),
+        padding: const EdgeInsets.all(5),
+        minimumSize: const Size(34, 34),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     ),

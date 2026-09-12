@@ -393,8 +393,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: () => _cycleDisplayCurrency(householdCurrency),
         radius: 24,
         child: SizedBox(
-          width: 44,
-          height: 44,
+          width: 36,
+          height: 36,
           child: Center(
             child: Container(
               width: 28,
@@ -499,10 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return monthChanged ? _monthDivider(next) : const SizedBox(height: 10);
   }
 
-  /// Far left of the app bar: flips the app between Ivory and Obsidian.
-  /// It sits in the leading slot rather than with the actions because the
-  /// actions row is already five icons wide, and a sixth started eating
-  /// into the budget's name.
+  /// Flips the app between Ivory and Obsidian, first in the actions row.
   Widget _themeToggleButton() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return IconButton(
@@ -686,9 +683,6 @@ class _HomeScreenState extends State<HomeScreen> {
               // the bar's frosting to actually blur.
               extendBodyBehindAppBar: true,
               appBar: AppBar(
-                leading: _themeToggleButton(),
-                leadingWidth: 40,
-                titleSpacing: 4,
                 flexibleSpace: ClipRect(
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
@@ -707,7 +701,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                titleSpacing: 8,
                 actions: [
+                  _themeToggleButton(),
                   _viewModeToggle(),
                   _currencyToggleButton(currency),
                   IconButton(
