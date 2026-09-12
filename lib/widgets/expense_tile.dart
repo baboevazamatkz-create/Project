@@ -54,7 +54,7 @@ class ExpenseTile extends StatelessWidget {
         Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6);
 
     return Card(
-      color: Theme.of(context).cardTheme.color?.withValues(alpha: 0.82),
+      color: Theme.of(context).cardTheme.color?.withValues(alpha: 0.78),
       child: InkWell(
         onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(20),
