@@ -20,6 +20,14 @@ const Color kChampagne = Color(0xFFC8A86B);
 const Color kIncomeColor = Color(0xFF44705B);
 const Color kExpenseColor = Color(0xFFA4534A);
 
+/// The one loud colour in the palette, kept for exactly one job: a budget
+/// that has been blown. Everywhere else spending is the muted terracotta.
+const Color kOverBudgetColor = Color(0xFFE23B2E);
+const Color kOverBudgetColorDark = Color(0xFFFF5247);
+
+Color overBudgetColor(BuildContext context) =>
+    _isDark(context) ? kOverBudgetColorDark : kOverBudgetColor;
+
 /// Their dark-theme counterparts -- the same hues lifted, because a deep
 /// jewel tone goes muddy against near-black.
 const Color kIncomeColorDark = Color(0xFF6FA083);
