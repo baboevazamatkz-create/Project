@@ -504,30 +504,16 @@ class _HomeScreenState extends State<HomeScreen> {
   /// no business sitting a few millimetres from the buttons people press
   /// several times a day.
   Widget _clearButton() {
-    return Tooltip(
-      message: 'Очистить бюджет',
-      child: Material(
-        color: expenseColor(context).withValues(alpha: 0.16),
-        shape: CircleBorder(
-          side: BorderSide(
-            color: expenseColor(context).withValues(alpha: 0.55),
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: _confirmClearAll,
-          customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: 44,
-            height: 44,
-            child: Icon(
-              Icons.delete_sweep_outlined,
-              size: 20,
-              color: expenseColor(context),
-            ),
-          ),
-        ),
-      ),
+    // Same button as the two in the opposite corner -- a filled circle at
+    // the same alpha -- just red and a size down, because it is the one
+    // you should reach for least.
+    return FloatingActionButton.small(
+      heroTag: 'clear_budget',
+      backgroundColor: expenseColor(context).withValues(alpha: 0.88),
+      foregroundColor: const Color(0xFFF6F2EA),
+      onPressed: _confirmClearAll,
+      tooltip: 'Очистить бюджет',
+      child: const Icon(Icons.delete_sweep_outlined, size: 20),
     );
   }
 
