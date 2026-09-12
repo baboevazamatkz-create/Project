@@ -3,11 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'package:expense_tracker/models/category_group.dart';
 import 'package:expense_tracker/models/currency.dart';
 import 'package:expense_tracker/models/expense.dart';
 import 'package:expense_tracker/models/household.dart';
 import 'package:expense_tracker/models/transaction_type.dart';
 import 'package:expense_tracker/models/expense_category.dart';
+import 'package:expense_tracker/screens/home_screen.dart'
+    show monthDividerLabel;
 import 'package:expense_tracker/screens/household_screen.dart';
 import 'package:expense_tracker/screens/stats_screen.dart';
 import 'package:expense_tracker/theme.dart';
@@ -327,6 +330,103 @@ void main() {
       ),
     ),
   );
+
+  group('buildCategoryGroups', () {
+    final september = DateTime(2026, 9);
+
+    test('only includes expenses that fall within the given month', () {
+      final inMonth = Expense(
+        id: 'a',
+        amount: 500,
+        date: DateTime(2026, 9, 10),
+        category: ExpenseCategory.food,
+      );
+      final outOfMonth = Expense(
+        id: 'b',
+        amount: 999,
+        date: DateTime(2026, 8, 10),
+        category: ExpenseCategory.food,
+      );
+      final groups = buildCategoryGroups(
+        [inMonth, outOfMonth],
+        month: september,
+      );
+      expect(groups, hasLength(1));
+      expect(groups.single.items, [inMonth]);
+      expect(groups.single.total, 500);
+    });
+
+    test('income forms its own group, listed first', () {
+      final income = Expense(
+        id: 'i',
+        amount: 1000,
+        date: DateTime(2026, 9, 3),
+        type: TransactionType.income,
+      );
+      final food = Expense(
+        id: 'f',
+        amount: 300,
+        date: DateTime(2026, 9, 3),
+        category: ExpenseCategory.food,
+      );
+      final groups = buildCategoryGroups([food, income], month: september);
+      expect(groups.first.label, 'Доход');
+      expect(groups.first.total, 1000);
+    });
+
+    test('categories are ordered by total spent, highest first', () {
+      final smallFood = Expense(
+        id: 'f1',
+        amount: 100,
+        date: DateTime(2026, 9, 1),
+        category: ExpenseCategory.food,
+      );
+      final bigTransport = Expense(
+        id: 't1',
+        amount: 5000,
+        date: DateTime(2026, 9, 2),
+        category: ExpenseCategory.transport,
+      );
+      final groups = buildCategoryGroups(
+        [smallFood, bigTransport],
+        month: september,
+      );
+      expect(groups.map((g) => g.label), ['Транспорт', 'Еда']);
+    });
+
+    test("sums every transaction in a category into that group's total", () {
+      final a = Expense(
+        id: 'a',
+        amount: 100,
+        date: DateTime(2026, 9, 1),
+        category: ExpenseCategory.food,
+      );
+      final b = Expense(
+        id: 'b',
+        amount: 250,
+        date: DateTime(2026, 9, 15),
+        category: ExpenseCategory.food,
+      );
+      final groups = buildCategoryGroups([a, b], month: september);
+      expect(groups.single.total, 350);
+      expect(groups.single.items, hasLength(2));
+    });
+
+    test('a month with nothing recorded produces no groups', () {
+      expect(buildCategoryGroups(<Expense>[], month: september), isEmpty);
+    });
+  });
+
+  group('monthDividerLabel', () {
+    test('omits the year for the current calendar year', () {
+      final thisYear = DateTime(DateTime.now().year, 9, 1);
+      expect(monthDividerLabel(thisYear), 'Сентябрь');
+    });
+
+    test('includes the year once it is not the current one', () {
+      expect(monthDividerLabel(DateTime(2019, 3, 1)), 'Март 2019');
+    });
+  });
 
   group('convertApprox', () {
     test('same currency is returned unchanged, not just approximately equal',
