@@ -589,6 +589,52 @@ void main() {
     expect(find.textContaining('1 000'), findsNothing);
     expect(find.textContaining('≈'), findsWidgets);
   });
+
+  testWidgets(
+      'Expense row hides the category label when told to, keeping the note',
+      (tester) async {
+    final withNote = Expense(
+      id: 'd',
+      amount: 500,
+      date: DateTime(2026, 9, 1),
+      category: ExpenseCategory.food,
+      note: 'Кофе с собой',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ExpenseTile(
+            expense: withNote,
+            currency: AppCurrency.rub,
+            showCategoryLabel: false,
+          ),
+        ),
+      ),
+    );
+    // The category name (shown in the group header above this row in the
+    // grouped view) does not repeat on the row itself...
+    expect(find.text('Еда'), findsNothing);
+    // ...but the note the user actually wrote still shows.
+    expect(find.text('Кофе с собой'), findsOneWidget);
+  });
+
+  testWidgets('Expense row shows the category label by default',
+      (tester) async {
+    final expense = Expense(
+      id: 'e',
+      amount: 500,
+      date: DateTime(2026, 9, 1),
+      category: ExpenseCategory.food,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ExpenseTile(expense: expense, currency: AppCurrency.rub),
+        ),
+      ),
+    );
+    expect(find.text('Еда'), findsOneWidget);
+  });
 }
 
 final _categoryEntries = <MapEntry<ExpenseCategory, double>>[
