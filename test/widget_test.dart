@@ -95,15 +95,17 @@ void main() {
       ),
     );
 
-    expect(find.text('Трекинг расходов'), findsOneWidget);
+    expect(find.text('Общий бюджет\nна двоих'), findsOneWidget);
     expect(find.text('Создать новый бюджет'), findsOneWidget);
     expect(find.text('Присоединиться по коду'), findsOneWidget);
   });
 
   testWidgets('Budget switcher icons stay visible on the dark theme',
       (tester) async {
-    // The sheet is drawn in the brand green rather than the near-black ink
-    // accent, which used to disappear into the dark background entirely.
+    // The sheet is drawn in the champagne accent rather than the near-black
+    // ink, which used to disappear into the dark background entirely -- and
+    // on dark it is the *lighter* champagne, since the deep one goes muddy
+    // against near-black.
     await _pumpAt(
       tester,
       Scaffold(
@@ -129,7 +131,7 @@ void main() {
     final checkIcon = tester.widget<Icon>(
       find.byIcon(Icons.check_circle_rounded),
     );
-    expect(checkIcon.color, kBrandColor);
+    expect(checkIcon.color, kChampagne);
 
     // The coin icon was replaced by the currency's own symbol (see
     // CurrencySymbolIcon); check that took the same colour.
@@ -139,7 +141,7 @@ void main() {
         matching: find.byType(Text),
       ),
     );
-    expect(symbolText.style?.color, kBrandColor);
+    expect(symbolText.style?.color, kChampagne);
   });
 
   testWidgets(

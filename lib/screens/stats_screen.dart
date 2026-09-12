@@ -7,6 +7,7 @@ import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
 import '../theme.dart';
+import '../widgets/app_background_pattern.dart';
 
 final _monthFormat = DateFormat('LLL', 'ru');
 
@@ -128,27 +129,48 @@ class _StatsScreenState extends State<StatsScreen>
         title: const Text('Статистика'),
         bottom: TabBar(
           controller: _tabController,
+          labelColor: goldFor(context),
+          unselectedLabelColor:
+              accentForeground(context).withValues(alpha: 0.45),
+          labelStyle: const TextStyle(
+            fontFamily: 'Onest',
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.8,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontFamily: 'Onest',
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.8,
+          ),
+          indicatorColor: goldFor(context),
+          indicatorWeight: 1.6,
+          indicatorSize: TabBarIndicatorSize.label,
+          dividerColor: hairlineColor(context),
           tabs: const [
-            Tab(text: 'Категории'),
-            Tab(text: 'История'),
+            Tab(text: 'КАТЕГОРИИ'),
+            Tab(text: 'ИСТОРИЯ'),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          CategoriesTab(
-            entries: _categoryEntries,
-            currency: widget.currency,
-            budgetsStream: _budgetsStream,
-            onEditBudget: _editBudget,
-          ),
-          HistoryTab(
-            monthlyTotals: _monthlyTotals,
-            currency: widget.currency,
-            monthLabel: _monthLabel,
-          ),
-        ],
+      body: AppBackgroundPattern(
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            CategoriesTab(
+              entries: _categoryEntries,
+              currency: widget.currency,
+              budgetsStream: _budgetsStream,
+              onEditBudget: _editBudget,
+            ),
+            HistoryTab(
+              monthlyTotals: _monthlyTotals,
+              currency: widget.currency,
+              monthLabel: _monthLabel,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -196,17 +218,13 @@ class CategoriesTab extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           children: [
-            Text(
-              'За текущий месяц',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.normal,
-                color: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.color
-                    ?.withValues(alpha: 0.6),
+            Center(
+              child: Text(
+                'ЗА ТЕКУЩИЙ МЕСЯЦ',
+                style: microLabel(
+                  context,
+                  color: goldFor(context).withValues(alpha: 0.85),
+                ),
               ),
             ),
             const SizedBox(height: 28),
@@ -235,9 +253,9 @@ class CategoriesTab extends StatelessWidget {
                                   : '',
                               radius: ringRadius,
                               titleStyle: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.normal,
-                                fontSize: 13,
+                                color: Color(0xFFF6F2EA),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
                               ),
                             );
                           }).toList(),
@@ -251,27 +269,22 @@ class CategoriesTab extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Всего',
+                              'ВСЕГО',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.color
-                                    ?.withValues(alpha: 0.5),
-                              ),
+                              style: microLabel(context, size: 9.5),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
                                 currency.format.format(total),
                                 maxLines: 1,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.normal,
+                                style: moneyStyle(
+                                  size: 18,
+                                  weight: FontWeight.w300,
+                                  color: accentForeground(context),
+                                  letterSpacing: -0.4,
                                 ),
                               ),
                             ),
@@ -342,15 +355,18 @@ class _CategoryRow extends StatelessWidget {
                 return Row(
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 34,
+                      height: 34,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: category.color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
+                        color: category.color.withValues(alpha: 0.13),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: category.color.withValues(alpha: 0.22),
+                        ),
                       ),
                       child:
-                          Icon(category.icon, color: category.color, size: 18),
+                          Icon(category.icon, color: category.color, size: 17),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -359,7 +375,9 @@ class _CategoryRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.normal),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -0.1),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -374,10 +392,13 @@ class _CategoryRow extends StatelessWidget {
                               : currency.format.format(amount),
                           maxLines: 1,
                           softWrap: false,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.normal,
-                            color: isOverBudget ? kExpenseColor : null,
+                          style: moneyStyle(
+                            size: 14,
+                            weight: FontWeight.w500,
+                            color: isOverBudget
+                                ? expenseColor(context)
+                                : accentForeground(context)
+                                    .withValues(alpha: 0.85),
                           ),
                         ),
                       ),
@@ -394,9 +415,10 @@ class _CategoryRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: progress.clamp(0.0, 1.0),
-                    minHeight: 6,
+                    minHeight: 4,
                     backgroundColor: category.color.withValues(alpha: 0.12),
-                    color: isOverBudget ? kExpenseColor : category.color,
+                    color:
+                        isOverBudget ? expenseColor(context) : category.color,
                   ),
                 ),
               ),
@@ -420,7 +442,7 @@ class HistoryTab extends StatelessWidget {
     required this.monthLabel,
   });
 
-  static const _lowColor = Color(0xFF5B7A93);
+  static const _lowColor = kChampagne;
   static const _highColor = kExpenseColor;
 
   Color _colorForValue(double value, double maxValue) {
@@ -456,15 +478,10 @@ class HistoryTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Расходы за последние 6 месяцев',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.normal,
-              color: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.color
-                  ?.withValues(alpha: 0.6),
+            'РАСХОДЫ ЗА ПОСЛЕДНИЕ 6 МЕСЯЦЕВ',
+            style: microLabel(
+              context,
+              color: goldFor(context).withValues(alpha: 0.85),
             ),
           ),
           const SizedBox(height: 24),

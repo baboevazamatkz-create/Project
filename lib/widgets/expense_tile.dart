@@ -43,23 +43,21 @@ class ExpenseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIncome = expense.isIncome;
-    final color = isIncome ? kIncomeColor : expense.category!.color;
+    final accent = isIncome ? incomeColor(context) : expense.category!.color;
     final icon =
         isIncome ? Icons.arrow_downward_rounded : expense.category!.icon;
     final title = isIncome ? 'Доход' : expense.category!.label;
     final sign = isIncome ? '+' : '−';
     final displayAmount = amountOverride ?? expense.amount;
     final approxPrefix = isApproximate ? '≈ ' : '';
-    final mutedColor =
-        Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6);
+    final ink = accentForeground(context);
 
     return Card(
-      color: Theme.of(context).cardTheme.color?.withValues(alpha: 0.78),
       child: InkWell(
         onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.fromLTRB(showIcon ? 14 : 18, 13, 18, 13),
           child: LayoutBuilder(
             builder: (context, constraints) {
               // The amount is given a share of the row rather than whatever it
@@ -71,19 +69,19 @@ class ExpenseTile extends StatelessWidget {
                 children: [
                   if (showIcon) ...[
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(14),
+                        color: accent.withValues(alpha: 0.13),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: accent.withValues(alpha: 0.22),
+                          width: 1,
+                        ),
                       ),
-                      child: Icon(
-                        icon,
-                        color: color,
-                        size: 22,
-                      ),
+                      child: Icon(icon, color: accent, size: 19),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 13),
                   ],
                   Expanded(
                     child: Column(
@@ -93,20 +91,23 @@ class ExpenseTile extends StatelessWidget {
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.normal,
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -0.1,
+                            color: ink.withValues(alpha: 0.92),
                           ),
                         ),
                         if (expense.note.isNotEmpty) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 3),
                           Text(
                             expense.note,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 13,
-                              color: mutedColor,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w400,
+                              color: ink.withValues(alpha: 0.48),
                             ),
                           ),
                         ],
@@ -126,28 +127,28 @@ class ExpenseTile extends StatelessWidget {
                             '$approxPrefix$sign${currency.format.format(displayAmount)}',
                             maxLines: 1,
                             softWrap: false,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.normal,
-                              color: isIncome ? kIncomeColor : kExpenseColor,
+                            style: moneyStyle(
+                              size: 15,
+                              weight: FontWeight.w500,
+                              color: isIncome
+                                  ? incomeColor(context)
+                                  : ink.withValues(alpha: 0.9),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerRight,
                           child: Text(
-                            _dateFormat.format(expense.date),
+                            _dateFormat.format(expense.date).toUpperCase(),
                             maxLines: 1,
                             softWrap: false,
                             style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.color
-                                  ?.withValues(alpha: 0.5),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.7,
+                              color: ink.withValues(alpha: 0.38),
                             ),
                           ),
                         ),

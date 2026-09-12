@@ -159,37 +159,52 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
           children: [
             Center(
               child: Container(
-                width: 40,
+                width: 38,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
+                margin: const EdgeInsets.only(bottom: 22),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.4),
+                  color: accentForeground(context).withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             Text(
-              _isEditing
-                  ? (widget.type == TransactionType.expense
-                      ? 'Изменить расход'
-                      : 'Изменить доход')
-                  : (widget.type == TransactionType.expense
-                      ? 'Новый расход'
-                      : 'Новый доход'),
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
+              (_isEditing
+                      ? (widget.type == TransactionType.expense
+                          ? 'Изменить расход'
+                          : 'Изменить доход')
+                      : (widget.type == TransactionType.expense
+                          ? 'Новый расход'
+                          : 'Новый доход'))
+                  .toUpperCase(),
+              style: microLabel(
+                context,
+                size: 11,
+                color: goldFor(context).withValues(alpha: 0.9),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             TextField(
               controller: _amountController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [_ThousandsSeparatorFormatter()],
               autofocus: true,
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
+              style: moneyStyle(
+                size: 26,
+                weight: FontWeight.w300,
+                color: accentForeground(context),
+                letterSpacing: -0.5,
+              ),
               decoration: InputDecoration(
                 hintText: 'Сумма, ${widget.currency.symbol}',
+                hintStyle: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w300,
+                  color: accentForeground(context).withValues(alpha: 0.28),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                 errorText: _errorText,
                 // The currency's own symbol, not a generic money icon --
                 // wrong to imply "dollar" when the budget is in rubles or
@@ -202,35 +217,39 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
             ),
             if (widget.type == TransactionType.expense) ...[
               const SizedBox(height: 16),
-              const Text(
-                'Категория',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
-              ),
-              const SizedBox(height: 10),
+              Text('КАТЕГОРИЯ', style: microLabel(context)),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
                 children: ExpenseCategory.values.map((category) {
                   final selected = category == _selectedCategory;
+                  const onSelectedInk = Color(0xFFF6F2EA);
                   return ChoiceChip(
                     selected: selected,
+                    showCheckmark: false,
                     onSelected: (_) =>
                         setState(() => _selectedCategory = category),
                     avatar: Icon(
                       category.icon,
-                      size: 18,
-                      color: selected ? Colors.white : category.color,
+                      size: 17,
+                      color: selected ? onSelectedInk : category.color,
                     ),
                     label: Text(category.label),
                     labelStyle: TextStyle(
-                      color: selected ? Colors.white : category.color,
-                      fontWeight: FontWeight.normal,
+                      fontSize: 13,
+                      color: selected ? onSelectedInk : category.color,
+                      fontWeight: FontWeight.w500,
                     ),
                     selectedColor: category.color,
-                    backgroundColor: category.color.withValues(alpha: 0.1),
+                    backgroundColor: category.color.withValues(alpha: 0.08),
+                    side: BorderSide(
+                      color: category.color.withValues(
+                        alpha: selected ? 0 : 0.28,
+                      ),
+                    ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide.none,
+                      borderRadius: BorderRadius.circular(30),
                     ),
                   );
                 }).toList(),
@@ -254,6 +273,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).inputDecorationTheme.fillColor,
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: hairlineColor(context)),
                 ),
                 child: Row(
                   children: [
@@ -283,7 +303,10 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               width: double.infinity,
               child: ElevatedButton(
                 style: widget.type == TransactionType.income
-                    ? ElevatedButton.styleFrom(backgroundColor: kIncomeColor)
+                    ? ElevatedButton.styleFrom(
+                        backgroundColor: incomeColor(context),
+                        foregroundColor: const Color(0xFFF6F2EA),
+                      )
                     : null,
                 onPressed: _submit,
                 child: Text(_isEditing ? 'Сохранить' : 'Добавить'),

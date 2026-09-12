@@ -49,22 +49,25 @@ extension ExpenseCategoryX on ExpenseCategory {
     }
   }
 
+  /// One muted, mid-value family rather than seven saturated hues: the
+  /// categories still read apart at a glance, but none of them shouts over
+  /// the champagne-and-obsidian palette the rest of the app is built in.
   Color get color {
     switch (this) {
       case ExpenseCategory.food:
-        return const Color(0xFFFF8A5C);
+        return const Color(0xFFC0874A);
       case ExpenseCategory.transport:
-        return const Color(0xFF4C6FFF);
+        return const Color(0xFF5E7A99);
       case ExpenseCategory.housing:
-        return const Color(0xFF9B59D9);
+        return const Color(0xFF8A6F97);
       case ExpenseCategory.entertainment:
-        return const Color(0xFFEC4899);
+        return const Color(0xFFB57289);
       case ExpenseCategory.health:
-        return const Color(0xFFEF4444);
+        return const Color(0xFFA85F55);
       case ExpenseCategory.shopping:
-        return const Color(0xFF14B8A6);
+        return const Color(0xFF4E8279);
       case ExpenseCategory.other:
-        return const Color(0xFF8B8FA3);
+        return const Color(0xFF8A8275);
     }
   }
 
