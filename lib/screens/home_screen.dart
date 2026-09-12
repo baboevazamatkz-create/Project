@@ -507,8 +507,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Tooltip(
       message: 'Очистить бюджет',
       child: Material(
-        color: glassFill(context),
-        shape: CircleBorder(side: BorderSide(color: glassEdge(context))),
+        color: expenseColor(context).withValues(alpha: 0.16),
+        shape: CircleBorder(
+          side: BorderSide(
+            color: expenseColor(context).withValues(alpha: 0.55),
+          ),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: _confirmClearAll,
@@ -519,7 +523,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Icon(
               Icons.delete_sweep_outlined,
               size: 20,
-              color: accentForeground(context).withValues(alpha: 0.55),
+              color: expenseColor(context),
             ),
           ),
         ),
@@ -674,7 +678,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return [
       SliverPadding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 100),
         sliver: SliverList(delegate: SliverChildListDelegate(rows)),
       ),
     ];
@@ -734,11 +738,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   _themeToggleButton(),
                   _viewModeToggle(),
                   _currencyToggleButton(currency),
-                  IconButton(
-                    onPressed: _confirmClearAll,
-                    icon: const Icon(Icons.delete_sweep_outlined),
-                    tooltip: 'Очистить бюджет',
-                  ),
                   _tourStep(
                     tourKey: _statsKey,
                     title: 'Статистика',
@@ -800,6 +799,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         'чтобы изменить',
                     child: FloatingActionButton(
                       heroTag: 'add_expense',
+                      backgroundColor:
+                          (Theme.of(context).brightness == Brightness.dark
+                                  ? kChampagne
+                                  : kAccentColor)
+                              .withValues(alpha: 0.88),
                       onPressed: () =>
                           _openAddSheet(TransactionType.expense, currency),
                       tooltip: 'Добавить расход',
@@ -813,7 +817,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     description: 'Нажмите, чтобы записать поступление денег',
                     child: FloatingActionButton(
                       heroTag: 'add_income',
-                      backgroundColor: incomeColor(context),
+                      backgroundColor:
+                          incomeColor(context).withValues(alpha: 0.88),
                       foregroundColor: const Color(0xFFF6F2EA),
                       onPressed: () =>
                           _openAddSheet(TransactionType.income, currency),

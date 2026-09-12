@@ -401,7 +401,7 @@ class _CategoryRow extends StatelessWidget {
                                       ? FontWeight.w700
                                       : FontWeight.w500,
                                   color: isOverBudget
-                                      ? expenseColor(context)
+                                      ? overBudgetColor(context)
                                       : accentForeground(context)
                                           .withValues(alpha: 0.85),
                                 ),
