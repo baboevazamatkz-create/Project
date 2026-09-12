@@ -420,8 +420,8 @@ class HistoryTab extends StatelessWidget {
     required this.monthLabel,
   });
 
-  static const _lowColor = Color(0xFF3B82F6);
-  static const _highColor = Color(0xFFEF4444);
+  static const _lowColor = Color(0xFF5B7A93);
+  static const _highColor = kExpenseColor;
 
   Color _colorForValue(double value, double maxValue) {
     if (maxValue <= 0) return _lowColor;

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../models/currency.dart';
@@ -32,47 +34,62 @@ class SummaryCard extends StatelessWidget {
       kBrandColor.withValues(alpha: 0.06),
       baseColor,
     );
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: tintedColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+    // The one card on screen worth an actual frosted-glass blur rather than
+    // just a translucent fill -- there's only ever one of it, so the extra
+    // compositing cost that would add up across a scrolling list of rows is
+    // a non-issue here.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: tintedColor.withValues(alpha: 0.78),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: hairlineColor(context)),
+            boxShadow: [
+              BoxShadow(
+                color: kAccentColor.withValues(
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? 0.35
+                      : 0.08,
+                ),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _SummaryItem(
-              label: 'Сегодня',
-              expenseTotal: todayExpenseTotal,
-              incomeTotal: todayIncomeTotal,
-              currency: currency,
-              isApproximate: isApproximate,
-            ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _SummaryItem(
+                  label: 'Сегодня',
+                  expenseTotal: todayExpenseTotal,
+                  incomeTotal: todayIncomeTotal,
+                  currency: currency,
+                  isApproximate: isApproximate,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 78,
+                margin: const EdgeInsets.only(top: 4),
+                color: Theme.of(context).dividerTheme.color,
+              ),
+              Expanded(
+                child: _SummaryItem(
+                  label: 'За месяц',
+                  expenseTotal: monthExpenseTotal,
+                  incomeTotal: monthIncomeTotal,
+                  currency: currency,
+                  isApproximate: isApproximate,
+                ),
+              ),
+            ],
           ),
-          Container(
-            width: 1,
-            height: 78,
-            margin: const EdgeInsets.only(top: 4),
-            color: Theme.of(context).dividerTheme.color,
-          ),
-          Expanded(
-            child: _SummaryItem(
-              label: 'За месяц',
-              expenseTotal: monthExpenseTotal,
-              incomeTotal: monthIncomeTotal,
-              currency: currency,
-              isApproximate: isApproximate,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
