@@ -6,6 +6,7 @@ import '../data/household_settings_repository.dart';
 import '../models/currency.dart';
 import '../models/household.dart';
 import '../theme.dart';
+import '../widgets/app_background_pattern.dart';
 
 class HouseholdScreen extends StatefulWidget {
   final void Function(Household household) onReady;
@@ -88,24 +89,26 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
         // Tinted to match the welcome screen it is opened from, rather than
         // the plain black-on-white the Material default gives it.
         backgroundColor: Color.alphaBlend(
-          kBrandColor.withValues(alpha: isDark ? 0.10 : 0.05),
+          goldFor(context).withValues(alpha: isDark ? 0.08 : 0.04),
           Theme.of(context).dialogTheme.backgroundColor ??
               Theme.of(context).colorScheme.surface,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: kBrandColor.withValues(alpha: 0.25)),
+          side: BorderSide(color: goldFor(context).withValues(alpha: 0.3)),
         ),
-        titleTextStyle: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.normal,
-          color: kBrandColor,
+        titleTextStyle: TextStyle(
+          fontFamily: 'Onest',
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
+          color: accentForeground(context),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: kBrandColor, size: 22),
-            SizedBox(width: 10),
-            Expanded(
+            Icon(Icons.check_circle_rounded, color: goldFor(context), size: 21),
+            const SizedBox(width: 10),
+            const Expanded(
               child: Text(
                 'Бюджет создан',
                 maxLines: 1,
@@ -134,9 +137,10 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: kBrandColor.withValues(alpha: 0.12),
+                color: goldFor(context).withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: kBrandColor.withValues(alpha: 0.3)),
+                border:
+                    Border.all(color: goldFor(context).withValues(alpha: 0.35)),
               ),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
@@ -145,11 +149,11 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   softWrap: false,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.normal,
-                    letterSpacing: 4,
-                    color: kBrandColor,
+                  style: TextStyle(
+                    fontSize: 23,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 5,
+                    color: goldFor(context),
                   ),
                 ),
               ),
@@ -158,7 +162,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
         ),
         actions: [
           TextButton.icon(
-            style: TextButton.styleFrom(foregroundColor: kBrandColor),
+            style: TextButton.styleFrom(foregroundColor: goldFor(context)),
             onPressed: () {
               Clipboard.setData(ClipboardData(text: code));
               ScaffoldMessenger.of(context).showSnackBar(
@@ -169,7 +173,6 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
             label: const Text('Скопировать'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: kBrandColor),
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Готово'),
           ),
@@ -181,162 +184,157 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: widget.canCancel
-          ? AppBar(
-              title: const Text('Новый бюджет'),
-              foregroundColor: kBrandColor,
-              titleTextStyle: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.normal,
-                color: kBrandColor,
-              ),
-            )
-          : null,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (!widget.canCancel) ...[
-                    const Text(
-                      'Трекинг расходов',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.normal,
-                        color: kBrandColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  Text(
-                    'Создайте общий бюджет и поделитесь кодом, '
-                    'чтобы вести расходы вместе',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.color
-                          ?.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Text(
-                    'Валюта бюджета',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.color
-                          ?.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: _CurrencyPicker(
-                      selected: _selectedCurrency,
-                      onChanged: (currency) =>
-                          setState(() => _selectedCurrency = currency),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  TextField(
-                    controller: _labelController,
-                    textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      hintText: 'Название бюджета (например, Семья)',
-                      errorText: _labelError,
-                    ),
-                    onChanged: (_) {
-                      if (_labelError != null) {
-                        setState(() => _labelError = null);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kBrandColor,
-                      ),
-                      onPressed: _busy ? null : _createHousehold,
-                      icon: const Icon(Icons.add_circle_outline),
-                      label: const Text(
-                        'Создать новый бюджет',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: Divider(
-                              color: Colors.grey.withValues(alpha: 0.3))),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+      appBar:
+          widget.canCancel ? AppBar(title: const Text('Новый бюджет')) : null,
+      body: AppBackgroundPattern(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!widget.canCancel) ...[
+                      Center(
                         child: Text(
-                          'или',
-                          style: TextStyle(
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.color
-                                ?.withValues(alpha: 0.5),
+                          'ГДЕБАБЛО?',
+                          style: microLabel(
+                            context,
+                            size: 11,
+                            color: goldFor(context).withValues(alpha: 0.9),
                           ),
                         ),
                       ),
-                      Expanded(
-                          child: Divider(
-                              color: Colors.grey.withValues(alpha: 0.3))),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Общий бюджет\nна двоих',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 30,
+                          height: 1.15,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: -0.8,
+                          color: accentForeground(context),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                     ],
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _codeController,
-                    textAlign: TextAlign.center,
-                    textCapitalization: TextCapitalization.characters,
-                    inputFormatters: [UpperCaseTextFormatter()],
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.normal,
-                      letterSpacing: 4,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Код бюджета',
-                      hintStyle:
-                          Theme.of(context).inputDecorationTheme.hintStyle,
-                      errorText: _codeError,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 52,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: kBrandColor,
-                        side: const BorderSide(color: kBrandColor),
-                      ),
-                      onPressed: _busy ? null : _joinHousehold,
-                      icon: const Icon(Icons.group_add_rounded),
-                      label: const Text(
-                        'Присоединиться по коду',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      'Создайте общий бюджет и поделитесь кодом, '
+                      'чтобы вести расходы вместе',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.color
+                            ?.withValues(alpha: 0.6),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 28),
+                    Center(
+                      child: Text('ВАЛЮТА БЮДЖЕТА', style: microLabel(context)),
+                    ),
+                    const SizedBox(height: 10),
+                    Center(
+                      child: _CurrencyPicker(
+                        selected: _selectedCurrency,
+                        onChanged: (currency) =>
+                            setState(() => _selectedCurrency = currency),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    TextField(
+                      controller: _labelController,
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        hintText: 'Название бюджета (например, Семья)',
+                        errorText: _labelError,
+                      ),
+                      onChanged: (_) {
+                        if (_labelError != null) {
+                          setState(() => _labelError = null);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: _busy ? null : _createHousehold,
+                        icon: const Icon(Icons.add_circle_outline, size: 19),
+                        label: const Text(
+                          'Создать новый бюджет',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: hairlineColor(context))),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child:
+                              Text('ИЛИ', style: microLabel(context, size: 10)),
+                        ),
+                        Expanded(child: Divider(color: hairlineColor(context))),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: _codeController,
+                      textAlign: TextAlign.center,
+                      textCapitalization: TextCapitalization.characters,
+                      inputFormatters: [UpperCaseTextFormatter()],
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 4,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Код бюджета',
+                        // The field letterspaces its code digits; the hint is
+                        // a sentence and should not inherit that.
+                        hintStyle: Theme.of(context)
+                            .inputDecorationTheme
+                            .hintStyle
+                            ?.copyWith(fontSize: 15, letterSpacing: 0.2),
+                        errorText: _codeError,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor:
+                              accentForeground(context).withValues(alpha: 0.85),
+                          side: BorderSide(color: hairlineColor(context)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          textStyle: const TextStyle(
+                            fontFamily: 'Onest',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        onPressed: _busy ? null : _joinHousehold,
+                        icon: const Icon(Icons.group_add_rounded, size: 19),
+                        label: const Text(
+                          'Присоединиться по коду',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -369,6 +367,7 @@ class _CurrencyPicker extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).inputDecorationTheme.fillColor,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: hairlineColor(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -383,11 +382,12 @@ class _CurrencyPicker extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? kBrandColor.withValues(alpha: 0.14)
+                    ? goldFor(context).withValues(alpha: 0.12)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 border: isSelected
-                    ? Border.all(color: kBrandColor.withValues(alpha: 0.4))
+                    ? Border.all(
+                        color: goldFor(context).withValues(alpha: 0.45))
                     : null,
               ),
               child: Text(
@@ -397,13 +397,9 @@ class _CurrencyPicker extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: isSelected
-                      ? kBrandColor
-                      : Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.color
-                          ?.withValues(alpha: 0.6),
-                  fontWeight: FontWeight.normal,
+                      ? goldFor(context)
+                      : accentForeground(context).withValues(alpha: 0.55),
+                  fontWeight: FontWeight.w500,
                   fontSize: 11,
                 ),
               ),

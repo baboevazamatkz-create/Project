@@ -38,24 +38,24 @@ class HouseholdSwitcherSheet extends StatelessWidget {
           children: [
             Center(
               child: Container(
-                width: 40,
+                width: 38,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
+                margin: const EdgeInsets.only(bottom: 22),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.4),
+                  color: accentForeground(context).withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const Text(
-              'Мои бюджеты',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.normal,
-                color: kBrandColor,
+            Text(
+              'МОИ БЮДЖЕТЫ',
+              style: microLabel(
+                context,
+                size: 11,
+                color: goldFor(context).withValues(alpha: 0.9),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             for (final household in households)
               _HouseholdRow(
                 household: household,
@@ -73,8 +73,18 @@ class HouseholdSwitcherSheet extends StatelessWidget {
               height: 52,
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: kBrandColor,
-                  side: const BorderSide(color: kBrandColor),
+                  foregroundColor: goldFor(context),
+                  side: BorderSide(
+                    color: goldFor(context).withValues(alpha: 0.45),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(
+                    fontFamily: 'Onest',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -113,18 +123,21 @@ class _HouseholdRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color:
-            isActive ? kBrandColor.withValues(alpha: 0.12) : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        color: isActive
+            ? goldFor(context).withValues(alpha: 0.10)
+            : accentForeground(context).withValues(alpha: 0.02),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: isActive
-                  ? Border.all(color: kBrandColor.withValues(alpha: 0.35))
-                  : null,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isActive
+                    ? goldFor(context).withValues(alpha: 0.45)
+                    : hairlineColor(context),
+              ),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -135,13 +148,16 @@ class _HouseholdRow extends StatelessWidget {
                     height: 40,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: kBrandColor.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(12),
+                      color: goldFor(context).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: goldFor(context).withValues(alpha: 0.28),
+                      ),
                     ),
                     child: CurrencySymbolIcon(
                       currency: currency,
-                      color: kBrandColor,
-                      size: 20,
+                      color: goldFor(context),
+                      size: 19,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -155,17 +171,19 @@ class _HouseholdRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 15,
-                            fontWeight: FontWeight.normal,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -0.1,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
                           household.code,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 12,
-                            letterSpacing: 1,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 1.4,
                             color: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
@@ -177,7 +195,8 @@ class _HouseholdRow extends StatelessWidget {
                     ),
                   ),
                   if (isActive)
-                    const Icon(Icons.check_circle_rounded, color: kBrandColor)
+                    Icon(Icons.check_circle_rounded,
+                        color: goldFor(context), size: 21)
                   else
                     IconButton(
                       onPressed: () {
@@ -186,10 +205,10 @@ class _HouseholdRow extends StatelessWidget {
                           const SnackBar(content: Text('Код скопирован')),
                         );
                       },
-                      // Muted green rather than the default ink, so it sits
+                      // Champagne rather than the default ink, so it sits
                       // below the active row's check in the sheet's
                       // hierarchy.
-                      color: kBrandColor.withValues(alpha: 0.7),
+                      color: goldFor(context).withValues(alpha: 0.7),
                       icon: const Icon(Icons.copy_rounded, size: 18),
                     ),
                 ],

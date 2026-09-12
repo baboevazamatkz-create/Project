@@ -1,10 +1,16 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../models/currency.dart';
 import '../theme.dart';
 
+/// The one object on screen that is supposed to look expensive: a dark,
+/// faintly metallic slab, obsidian in both themes, carrying the two figures
+/// that actually matter at a glance.
+///
+/// The ranking inside it is deliberate -- the net result is the headline,
+/// set large and light; what it was made of (income and spending) sits
+/// under it as supporting detail. That is the order a bank states it in,
+/// and it is why the card reads as a statement rather than a tally.
 class SummaryCard extends StatelessWidget {
   final double todayExpenseTotal;
   final double todayIncomeTotal;
@@ -29,67 +35,83 @@ class SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseColor = Theme.of(context).cardTheme.color ?? Colors.white;
-    final tintedColor = Color.alphaBlend(
-      kBrandColor.withValues(alpha: 0.06),
-      baseColor,
-    );
-    // The one card on screen worth an actual frosted-glass blur rather than
-    // just a translucent fill -- there's only ever one of it, so the extra
-    // compositing cost that would add up across a scrolling list of rows is
-    // a non-issue here.
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: tintedColor.withValues(alpha: 0.78),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: hairlineColor(context)),
-            boxShadow: [
-              BoxShadow(
-                color: kAccentColor.withValues(
-                  alpha: Theme.of(context).brightness == Brightness.dark
-                      ? 0.35
-                      : 0.08,
-                ),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: heroGradient,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: kChampagne.withValues(alpha: 0.16)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B0A10).withValues(alpha: 0.30),
+            blurRadius: 34,
+            spreadRadius: -6,
+            offset: const Offset(0, 18),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _SummaryItem(
-                  label: 'Сегодня',
-                  expenseTotal: todayExpenseTotal,
-                  incomeTotal: todayIncomeTotal,
-                  currency: currency,
-                  isApproximate: isApproximate,
+        ],
+      ),
+      child: Stack(
+        children: [
+          // The light the slab is catching, from the top-left corner.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(26),
+                  gradient: RadialGradient(
+                    center: const Alignment(-0.85, -1.1),
+                    radius: 1.5,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.10),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                  ),
                 ),
               ),
-              Container(
-                width: 1,
-                height: 78,
-                margin: const EdgeInsets.only(top: 4),
-                color: Theme.of(context).dividerTheme.color,
-              ),
-              Expanded(
-                child: _SummaryItem(
-                  label: 'За месяц',
-                  expenseTotal: monthExpenseTotal,
-                  incomeTotal: monthIncomeTotal,
-                  currency: currency,
-                  isApproximate: isApproximate,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _SummaryItem(
+                    label: 'СЕГОДНЯ',
+                    expenseTotal: todayExpenseTotal,
+                    incomeTotal: todayIncomeTotal,
+                    currency: currency,
+                    isApproximate: isApproximate,
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 92,
+                  margin: const EdgeInsets.symmetric(horizontal: 18),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withValues(alpha: 0),
+                        Colors.white.withValues(alpha: 0.14),
+                        Colors.white.withValues(alpha: 0),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: _SummaryItem(
+                    label: 'ЗА МЕСЯЦ',
+                    expenseTotal: monthExpenseTotal,
+                    incomeTotal: monthIncomeTotal,
+                    currency: currency,
+                    isApproximate: isApproximate,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -113,65 +135,93 @@ class _SummaryItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final net = incomeTotal - expenseTotal;
-    final bodyColor = Theme.of(context).textTheme.bodyMedium?.color;
-    final amountStyle = TextStyle(
-      color: bodyColor,
-      fontSize: 13,
-      fontWeight: FontWeight.normal,
-    );
     // Marks converted figures so they don't read as exact sums.
     String approx(String amount) => isApproximate ? '≈ $amount' : amount;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: bodyColor,
-            fontSize: 17,
-            fontWeight: FontWeight.normal,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.4,
+            color: kChampagne.withValues(alpha: 0.85),
           ),
         ),
-        const SizedBox(height: 10),
-        Text(
-          approx('+${currency.format.format(incomeTotal)}'),
-          style: amountStyle.copyWith(color: kIncomeColor),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 3),
-        Text(
-          approx('−${currency.format.format(expenseTotal)}'),
-          style: amountStyle.copyWith(color: kExpenseColor),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Итого',
-          style: TextStyle(
-            color: bodyColor?.withValues(alpha: 0.5),
-            fontSize: 11,
+        const SizedBox(height: 12),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            approx(
+              net >= 0
+                  ? currency.format.format(net)
+                  : '−${currency.format.format(net.abs())}',
+            ),
+            maxLines: 1,
+            softWrap: false,
+            style: moneyStyle(
+              size: 26,
+              weight: FontWeight.w300,
+              color: kOnHero,
+              letterSpacing: -0.6,
+            ),
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          approx(
-            net >= 0
-                ? currency.format.format(net)
-                : '−${currency.format.format(net.abs())}',
+        const SizedBox(height: 14),
+        _Leg(
+          color: kIncomeColorDark,
+          amount: approx('+${currency.format.format(incomeTotal)}'),
+        ),
+        const SizedBox(height: 6),
+        _Leg(
+          color: kExpenseColorDark,
+          amount: approx('−${currency.format.format(expenseTotal)}'),
+        ),
+      ],
+    );
+  }
+}
+
+/// One of the two figures the headline is made of, marked by a small dot in
+/// its own colour rather than a coloured number -- on a dark slab a full
+/// line of colour shouts; a dot states.
+class _Leg extends StatelessWidget {
+  final Color color;
+  final String amount;
+
+  const _Leg({required this.color, required this.amount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 5,
+          height: 5,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              amount,
+              maxLines: 1,
+              softWrap: false,
+              style: moneyStyle(
+                size: 12.5,
+                weight: FontWeight.w400,
+                color: kOnHero.withValues(alpha: 0.62),
+                letterSpacing: -0.1,
+              ),
+            ),
           ),
-          style: amountStyle.copyWith(
-            color: net >= 0 ? kIncomeColor : kExpenseColor,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
         ),
       ],
     );

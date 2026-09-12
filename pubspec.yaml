@@ -33,3 +33,19 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  fonts:
+    # Subset to Latin + Cyrillic (incl. the Kazakh letters and the ₸/₽
+    # signs the currency formatter needs) to keep the web bundle small.
+    - family: Onest
+      fonts:
+        - asset: fonts/Onest-Light.ttf
+          weight: 300
+        - asset: fonts/Onest-Regular.ttf
+          weight: 400
+        - asset: fonts/Onest-Medium.ttf
+          weight: 500
+        - asset: fonts/Onest-SemiBold.ttf
+          weight: 600
+        - asset: fonts/Onest-Bold.ttf
+          weight: 700

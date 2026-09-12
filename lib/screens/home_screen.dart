@@ -274,10 +274,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (context) => HouseholdSwitcherSheet(
         households: widget.households,
         activeCode: widget.household.code,
@@ -303,7 +299,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('Отмена'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: kExpenseColor),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: expenseColor(context),
+              foregroundColor: const Color(0xFFF6F2EA),
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Очистить'),
           ),
@@ -338,10 +337,6 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (context) => AddExpenseSheet(
         type: type,
         currency: currency,
@@ -397,17 +392,24 @@ class _HomeScreenState extends State<HomeScreen> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                color: isConverted
+                    ? goldFor(context).withValues(alpha: 0.12)
+                    : Colors.transparent,
                 border: Border.all(
-                  color: isConverted ? kBrandColor : Colors.transparent,
-                  width: 1.4,
+                  color: isConverted
+                      ? goldFor(context).withValues(alpha: 0.7)
+                      : Colors.transparent,
+                  width: 1.2,
                 ),
               ),
               child: Text(
                 display.symbol,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  color: accentForeground(context),
+                  fontSize: 15,
+                  color: isConverted
+                      ? goldFor(context)
+                      : accentForeground(context).withValues(alpha: 0.78),
                 ),
               ),
             ),
@@ -461,27 +463,19 @@ class _HomeScreenState extends State<HomeScreen> {
   /// categories gets one (a category header carries no date of its own,
   /// so without this the month it belongs to would be invisible).
   Widget _monthDivider(DateTime month) {
-    final dividerColor = Theme.of(context).dividerTheme.color;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.fromLTRB(2, 14, 0, 10),
       child: Row(
         children: [
-          Expanded(child: Divider(color: dividerColor)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(
-              monthDividerLabel(month),
-              style: TextStyle(
-                fontSize: 11,
-                color: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.color
-                    ?.withValues(alpha: 0.5),
-              ),
+          Text(
+            monthDividerLabel(month).toUpperCase(),
+            style: microLabel(
+              context,
+              color: goldFor(context).withValues(alpha: 0.85),
             ),
           ),
-          Expanded(child: Divider(color: dividerColor)),
+          const SizedBox(width: 12),
+          Expanded(child: Divider(color: hairlineColor(context))),
         ],
       ),
     );
@@ -527,26 +521,35 @@ class _HomeScreenState extends State<HomeScreen> {
         ? convertApprox(group.total, from: currency, to: displayCurrency)
         : group.total;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, top: 4),
+      padding: const EdgeInsets.only(bottom: 10, top: 6, left: 2, right: 2),
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 30,
+            height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: group.color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
+              color: group.color.withValues(alpha: 0.13),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: group.color.withValues(alpha: 0.22),
+                width: 1,
+              ),
             ),
-            child: Icon(group.icon, color: group.color, size: 17),
+            child: Icon(group.icon, color: group.color, size: 16),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 11),
           Expanded(
             child: Text(
               group.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.1,
+                color: accentForeground(context).withValues(alpha: 0.9),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -556,9 +559,9 @@ class _HomeScreenState extends State<HomeScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.end,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+              style: moneyStyle(
+                size: 13,
+                weight: FontWeight.w600,
                 color: group.color,
               ),
             ),
@@ -719,11 +722,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         'чтобы изменить',
                     child: FloatingActionButton(
                       heroTag: 'add_expense',
-                      backgroundColor: kExpenseColor,
                       onPressed: () =>
                           _openAddSheet(TransactionType.expense, currency),
                       tooltip: 'Добавить расход',
-                      child: const Icon(Icons.remove),
+                      child: const Icon(Icons.remove_rounded),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -733,11 +735,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     description: 'Нажмите, чтобы записать поступление денег',
                     child: FloatingActionButton(
                       heroTag: 'add_income',
-                      backgroundColor: kIncomeColor,
+                      backgroundColor: incomeColor(context),
+                      foregroundColor: const Color(0xFFF6F2EA),
                       onPressed: () =>
                           _openAddSheet(TransactionType.income, currency),
                       tooltip: 'Добавить доход',
-                      child: const Icon(Icons.add),
+                      child: const Icon(Icons.add_rounded),
                     ),
                   ),
                 ],
