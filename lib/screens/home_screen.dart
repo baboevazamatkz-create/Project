@@ -495,43 +495,21 @@ class _HomeScreenState extends State<HomeScreen> {
     return monthChanged ? _monthDivider(next) : const SizedBox(height: 10);
   }
 
-  /// Right-aligned pill above the list: tap to flip between the plain
+  /// First (leftmost) AppBar action: tap to flip between the plain
   /// chronological history and the same history clustered by category
   /// within each month (never mixing two different months' spending on
-  /// one category into a single total). No outline or size change marks
-  /// the state -- the icon and the label are the only things that
-  /// change, each naming the view a tap switches *to*.
+  /// one category into a single total). Icon-only, like the other AppBar
+  /// actions -- the icon names the view a tap switches *to*, and the
+  /// tooltip carries the same text for accessibility.
   Widget _viewModeToggle() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => setState(() => _groupedByCategory = !_groupedByCategory),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _groupedByCategory
-                    ? Icons.receipt_long_rounded
-                    : Icons.grid_view_rounded,
-                size: 15,
-                color: accentForeground(context).withValues(alpha: 0.75),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                _groupedByCategory ? 'Список' : 'По категориям',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: accentForeground(context).withValues(alpha: 0.75),
-                ),
-              ),
-            ],
-          ),
-        ),
+    return IconButton(
+      onPressed: () => setState(() => _groupedByCategory = !_groupedByCategory),
+      icon: Icon(
+        _groupedByCategory
+            ? Icons.receipt_long_rounded
+            : Icons.grid_view_rounded,
       ),
+      tooltip: _groupedByCategory ? 'Список' : 'По категориям',
     );
   }
 
@@ -674,6 +652,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 actions: [
+                  _viewModeToggle(),
                   _currencyToggleButton(currency),
                   IconButton(
                     onPressed: _confirmClearAll,
@@ -791,12 +770,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   isApproximate: isConverted,
                                 ),
                               ),
-                            ),
-                          ),
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-                            sliver: SliverToBoxAdapter(
-                              child: _viewModeToggle(),
                             ),
                           ),
                           if (_groupedByCategory)
