@@ -591,7 +591,7 @@ void main() {
   });
 
   testWidgets(
-      'Expense row hides the category label when told to, keeping the note',
+      'Expense row hides its icon when told to, keeping the title and note',
       (tester) async {
     final withNote = Expense(
       id: 'd',
@@ -606,20 +606,20 @@ void main() {
           body: ExpenseTile(
             expense: withNote,
             currency: AppCurrency.rub,
-            showCategoryLabel: false,
+            showIcon: false,
           ),
         ),
       ),
     );
-    // The category name (shown in the group header above this row in the
-    // grouped view) does not repeat on the row itself...
-    expect(find.text('Еда'), findsNothing);
-    // ...but the note the user actually wrote still shows.
+    // The category's icon (shown once already in the group header above
+    // this row in the grouped view) does not repeat on the row itself...
+    expect(find.byIcon(ExpenseCategory.food.icon), findsNothing);
+    // ...but the row's own title and note still show.
+    expect(find.text('Еда'), findsOneWidget);
     expect(find.text('Кофе с собой'), findsOneWidget);
   });
 
-  testWidgets('Expense row shows the category label by default',
-      (tester) async {
+  testWidgets('Expense row shows its icon by default', (tester) async {
     final expense = Expense(
       id: 'e',
       amount: 500,
@@ -633,6 +633,7 @@ void main() {
         ),
       ),
     );
+    expect(find.byIcon(ExpenseCategory.food.icon), findsOneWidget);
     expect(find.text('Еда'), findsOneWidget);
   });
 }

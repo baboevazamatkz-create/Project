@@ -425,7 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required AppCurrency currency,
     required AppCurrency displayCurrency,
     required bool isConverted,
-    bool showCategoryLabel = true,
+    bool showIcon = true,
   }) {
     final tileAmount = isConverted
         ? convertApprox(expense.amount, from: currency, to: displayCurrency)
@@ -448,7 +448,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currency: displayCurrency,
         amountOverride: tileAmount,
         isApproximate: isConverted,
-        showCategoryLabel: showCategoryLabel,
+        showIcon: showIcon,
         onLongPress: () =>
             _openAddSheet(expense.type, currency, existing: expense),
       ),
@@ -625,7 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
             currency: currency,
             displayCurrency: displayCurrency,
             isConverted: isConverted,
-            showCategoryLabel: false,
+            showIcon: false,
           ));
           rows.add(const SizedBox(height: 10));
         }

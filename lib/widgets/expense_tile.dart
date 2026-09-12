@@ -24,11 +24,11 @@ class ExpenseTile extends StatelessWidget {
   final bool isApproximate;
 
   /// False in the grouped view, where the category header right above the
-  /// row already names the category (or "Доход") -- repeating it on every
-  /// row under that header just duplicated the same word down the column.
-  /// The note, if there is one, takes over as the row's one line of text
-  /// instead of sitting underneath a now-redundant title.
-  final bool showCategoryLabel;
+  /// row already carries that category's icon -- repeating the same icon
+  /// on every row under it was the redundant part, not the row's own
+  /// title. The title and note stay exactly as they are; only the
+  /// leading icon (and the space it took) drops out.
+  final bool showIcon;
 
   const ExpenseTile({
     super.key,
@@ -37,7 +37,7 @@ class ExpenseTile extends StatelessWidget {
     this.onLongPress,
     this.amountOverride,
     this.isApproximate = false,
-    this.showCategoryLabel = true,
+    this.showIcon = true,
   });
 
   @override
@@ -69,59 +69,49 @@ class ExpenseTile extends StatelessWidget {
               final amountMaxWidth = constraints.maxWidth * 0.42;
               return Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(14),
+                  if (showIcon) ...[
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: color,
+                        size: 22,
+                      ),
                     ),
-                    child: Icon(
-                      icon,
-                      color: color,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
+                    const SizedBox(width: 14),
+                  ],
                   Expanded(
-                    child: showCategoryLabel
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.normal,
-                                ),
-                              ),
-                              if (expense.note.isNotEmpty) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  expense.note,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: mutedColor,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          )
-                        : (expense.note.isEmpty
-                            ? const SizedBox.shrink()
-                            : Text(
-                                expense.note,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.normal,
-                                ),
-                              )),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                        if (expense.note.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            expense.note,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: mutedColor,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 12),
                   ConstrainedBox(
