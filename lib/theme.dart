@@ -91,6 +91,77 @@ const LinearGradient heroGradient = LinearGradient(
 /// Text sitting on the hero card, which is dark regardless of theme.
 const Color kOnHero = Color(0xFFF4F1EA);
 
+/// The body of a pane of glass: lighter at the top, thinner at the bottom,
+/// so the pane reads as a slab catching the light from above rather than a
+/// flat wash of semi-transparent colour.
+LinearGradient glassBodyGradient(BuildContext context) {
+  final isDark = _isDark(context);
+  return LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: isDark
+        ? [
+            Colors.white.withValues(alpha: 0.10),
+            Colors.white.withValues(alpha: 0.045),
+            Colors.white.withValues(alpha: 0.025),
+          ]
+        : [
+            Colors.white.withValues(alpha: 0.78),
+            Colors.white.withValues(alpha: 0.55),
+            Colors.white.withValues(alpha: 0.42),
+          ],
+    stops: const [0.0, 0.5, 1.0],
+  );
+}
+
+/// The lit edge around it: bright where the light lands, nearly gone on the
+/// far side. This one gradient is most of what separates glass from a
+/// rounded rectangle with an outline.
+LinearGradient glassEdgeGradient(BuildContext context) {
+  final isDark = _isDark(context);
+  return LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: isDark
+        ? [
+            Colors.white.withValues(alpha: 0.30),
+            Colors.white.withValues(alpha: 0.07),
+            Colors.white.withValues(alpha: 0.03),
+          ]
+        : [
+            Colors.white.withValues(alpha: 0.95),
+            Colors.white.withValues(alpha: 0.45),
+            kAccentColor.withValues(alpha: 0.12),
+          ],
+    stops: const [0.0, 0.45, 1.0],
+  );
+}
+
+/// A sheet is a bigger, calmer pane than a row: same material, less of a
+/// gradient, so long content does not sit on a visible ramp.
+LinearGradient sheetBodyGradient(BuildContext context) {
+  final isDark = _isDark(context);
+  return LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: isDark
+        ? [
+            const Color(0xFF24232B).withValues(alpha: 0.88),
+            const Color(0xFF16151B).withValues(alpha: 0.94)
+          ]
+        : [
+            Colors.white.withValues(alpha: 0.88),
+            const Color(0xFFF7F3EC).withValues(alpha: 0.94)
+          ],
+  );
+}
+
+/// The app bar floats over the scrolling list, so it is the one surface
+/// that genuinely needs frosting rather than translucency alone.
+Color appBarGlassTint(BuildContext context) => _isDark(context)
+    ? const Color(0xFF141318).withValues(alpha: 0.58)
+    : const Color(0xFFF6F2EA).withValues(alpha: 0.62);
+
 /// Small, letterspaced, uppercase — the label style that does most of the
 /// work in making a layout feel considered rather than default.
 TextStyle microLabel(BuildContext context,
@@ -153,9 +224,9 @@ ThemeData buildAppTheme(Brightness brightness) {
         fontWeight: FontWeight.w600,
         letterSpacing: -0.2,
       ),
-      iconTheme: IconThemeData(color: ink.withValues(alpha: 0.78), size: 22),
+      iconTheme: IconThemeData(color: ink.withValues(alpha: 0.78), size: 21),
       actionsIconTheme:
-          IconThemeData(color: ink.withValues(alpha: 0.78), size: 22),
+          IconThemeData(color: ink.withValues(alpha: 0.78), size: 21),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: isDark ? kChampagne : kAccentColor,
@@ -170,8 +241,8 @@ ThemeData buildAppTheme(Brightness brightness) {
     // at full width left the app bar title truncated on a phone.
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(
-        padding: const EdgeInsets.all(7),
-        minimumSize: const Size(38, 38),
+        padding: const EdgeInsets.all(6),
+        minimumSize: const Size(36, 36),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     ),

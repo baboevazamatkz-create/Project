@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,8 +15,10 @@ import '../models/transaction_type.dart';
 import '../widgets/add_expense_sheet.dart';
 import '../widgets/app_background_pattern.dart';
 import '../widgets/expense_tile.dart';
+import '../widgets/glass.dart';
 import '../widgets/household_switcher_sheet.dart';
 import '../theme.dart';
+import '../theme_mode_controller.dart';
 import '../widgets/summary_card.dart';
 import 'stats_screen.dart';
 
@@ -274,12 +278,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     showModalBottomSheet(
       context: context,
-      builder: (context) => HouseholdSwitcherSheet(
-        households: widget.households,
-        activeCode: widget.household.code,
-        currencies: _householdCurrencies,
-        onSwitch: widget.onSwitchHousehold,
-        onAddHousehold: widget.onAddHousehold,
+      backgroundColor: Colors.transparent,
+      builder: (context) => GlassSheet(
+        child: HouseholdSwitcherSheet(
+          households: widget.households,
+          activeCode: widget.household.code,
+          currencies: _householdCurrencies,
+          onSwitch: widget.onSwitchHousehold,
+          onAddHousehold: widget.onAddHousehold,
+        ),
       ),
     );
   }
@@ -337,11 +344,14 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => AddExpenseSheet(
-        type: type,
-        currency: currency,
-        existing: existing,
-        onSubmit: _addExpense,
+      backgroundColor: Colors.transparent,
+      builder: (context) => GlassSheet(
+        child: AddExpenseSheet(
+          type: type,
+          currency: currency,
+          existing: existing,
+          onSubmit: _addExpense,
+        ),
       ),
     );
   }
@@ -487,6 +497,30 @@ class _HomeScreenState extends State<HomeScreen> {
     final monthChanged =
         current.year != next.year || current.month != next.month;
     return monthChanged ? _monthDivider(next) : const SizedBox(height: 10);
+  }
+
+  /// Far left of the app bar: flips the app between Ivory and Obsidian.
+  /// It sits in the leading slot rather than with the actions because the
+  /// actions row is already five icons wide, and a sixth started eating
+  /// into the budget's name.
+  Widget _themeToggleButton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return IconButton(
+      onPressed: () => ThemeModeController.toggle(context),
+      tooltip: isDark ? 'Светлая тема' : 'Тёмная тема',
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        transitionBuilder: (child, animation) => RotationTransition(
+          turns: Tween<double>(begin: 0.6, end: 1).animate(animation),
+          child: FadeTransition(opacity: animation, child: child),
+        ),
+        child: Icon(
+          isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+          key: ValueKey(isDark),
+          color: goldFor(context),
+        ),
+      ),
+    );
   }
 
   /// First (leftmost) AppBar action: tap to flip between the plain
@@ -648,7 +682,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 : totals;
             _maybeStartTour(hasContent: snapshot.hasData);
             return Scaffold(
+              // The list runs under the app bar so there is something for
+              // the bar's frosting to actually blur.
+              extendBodyBehindAppBar: true,
               appBar: AppBar(
+                leading: _themeToggleButton(),
+                leadingWidth: 40,
+                titleSpacing: 4,
+                flexibleSpace: ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: appBarGlassTint(context),
+                        border: Border(
+                          bottom: BorderSide(color: hairlineColor(context)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 title: Text(
                   widget.household.label,
                   maxLines: 1,
@@ -751,7 +804,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     : CustomScrollView(
                         slivers: [
                           SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+                            padding: EdgeInsets.fromLTRB(
+                              20,
+                              MediaQuery.of(context).padding.top +
+                                  kToolbarHeight +
+                                  10,
+                              20,
+                              8,
+                            ),
                             sliver: SliverToBoxAdapter(
                               child: _tourStep(
                                 tourKey: _summaryCardKey,

@@ -7,10 +7,12 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'app_gate.dart';
 import 'firebase_options.dart';
 import 'theme.dart';
+import 'theme_mode_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ru');
+  await ThemeModeController.restore();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   if (FirebaseAuth.instance.currentUser == null) {
     await FirebaseAuth.instance.signInAnonymously();
@@ -23,30 +25,33 @@ class ExpenseTrackerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ГдеБабло?',
-      debugShowCheckedModeBanner: false,
-      locale: const Locale('ru'),
-      supportedLocales: const [Locale('ru'), Locale('en')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: buildAppTheme(Brightness.light),
-      darkTheme: buildAppTheme(Brightness.dark),
-      themeMode: ThemeMode.system,
-      builder: (context, child) {
-        final mediaQuery = MediaQuery.of(context);
-        return MediaQuery(
-          data: mediaQuery.copyWith(
-            textScaler: mediaQuery.textScaler
-                .clamp(minScaleFactor: 0.85, maxScaleFactor: 1.25),
-          ),
-          child: child!,
-        );
-      },
-      home: const AppGate(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeModeController.mode,
+      builder: (context, themeMode, _) => MaterialApp(
+        title: 'ГдеБабло?',
+        debugShowCheckedModeBanner: false,
+        locale: const Locale('ru'),
+        supportedLocales: const [Locale('ru'), Locale('en')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        theme: buildAppTheme(Brightness.light),
+        darkTheme: buildAppTheme(Brightness.dark),
+        themeMode: themeMode,
+        builder: (context, child) {
+          final mediaQuery = MediaQuery.of(context);
+          return MediaQuery(
+            data: mediaQuery.copyWith(
+              textScaler: mediaQuery.textScaler
+                  .clamp(minScaleFactor: 0.85, maxScaleFactor: 1.25),
+            ),
+            child: child!,
+          );
+        },
+        home: const AppGate(),
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
 import '../theme.dart';
+import 'glass.dart';
 
 final _dateFormat = DateFormat('d MMM', 'ru');
 
@@ -52,112 +53,116 @@ class ExpenseTile extends StatelessWidget {
     final approxPrefix = isApproximate ? '≈ ' : '';
     final ink = accentForeground(context);
 
-    return Card(
-      child: InkWell(
-        onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(showIcon ? 14 : 18, 13, 18, 13),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // The amount is given a share of the row rather than whatever it
-              // wants: a seven-digit sum on a small screen used to push the row
-              // past its width. Inside that share it scales down to fit, so it
-              // stays readable instead of being clipped.
-              final amountMaxWidth = constraints.maxWidth * 0.42;
-              return Row(
-                children: [
-                  if (showIcon) ...[
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.13),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: accent.withValues(alpha: 0.22),
-                          width: 1,
-                        ),
-                      ),
-                      child: Icon(icon, color: accent, size: 19),
-                    ),
-                    const SizedBox(width: 13),
-                  ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: -0.1,
-                            color: ink.withValues(alpha: 0.92),
+    return GlassPanel(
+      radius: 18,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onLongPress: onLongPress,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(showIcon ? 14 : 18, 13, 18, 13),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // The amount is given a share of the row rather than whatever it
+                // wants: a seven-digit sum on a small screen used to push the row
+                // past its width. Inside that share it scales down to fit, so it
+                // stays readable instead of being clipped.
+                final amountMaxWidth = constraints.maxWidth * 0.42;
+                return Row(
+                  children: [
+                    if (showIcon) ...[
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.13),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: accent.withValues(alpha: 0.22),
+                            width: 1,
                           ),
                         ),
-                        if (expense.note.isNotEmpty) ...[
-                          const SizedBox(height: 3),
+                        child: Icon(icon, color: accent, size: 19),
+                      ),
+                      const SizedBox(width: 13),
+                    ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            expense.note,
+                            title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w400,
-                              color: ink.withValues(alpha: 0.48),
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -0.1,
+                              color: ink.withValues(alpha: 0.92),
+                            ),
+                          ),
+                          if (expense.note.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              expense.note,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w400,
+                                color: ink.withValues(alpha: 0.48),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: amountMaxWidth),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              '$approxPrefix$sign${currency.format.format(displayAmount)}',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: moneyStyle(
+                                size: 15,
+                                weight: FontWeight.w500,
+                                color: isIncome
+                                    ? incomeColor(context)
+                                    : ink.withValues(alpha: 0.9),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              _dateFormat.format(expense.date).toUpperCase(),
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.7,
+                                color: ink.withValues(alpha: 0.38),
+                              ),
                             ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: amountMaxWidth),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            '$approxPrefix$sign${currency.format.format(displayAmount)}',
-                            maxLines: 1,
-                            softWrap: false,
-                            style: moneyStyle(
-                              size: 15,
-                              weight: FontWeight.w500,
-                              color: isIncome
-                                  ? incomeColor(context)
-                                  : ink.withValues(alpha: 0.9),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            _dateFormat.format(expense.date).toUpperCase(),
-                            maxLines: 1,
-                            softWrap: false,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.7,
-                              color: ink.withValues(alpha: 0.38),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
