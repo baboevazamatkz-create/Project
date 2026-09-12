@@ -453,14 +453,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// A thin rule with the month's name where the chronological list steps
-  /// from one month into an older one; a plain gap everywhere else.
-  Widget _buildSeparator(List<Expense> expenses, int index) {
-    final current = expenses[index].date;
-    final next = expenses[index + 1].date;
-    final monthChanged =
-        current.year != next.year || current.month != next.month;
-    if (!monthChanged) return const SizedBox(height: 10);
+  /// A thin rule with the month's name -- shared between the chronological
+  /// list, where it appears only where the month actually changes between
+  /// two rows, and the grouped view, where every month's cluster of
+  /// categories gets one (a category header carries no date of its own,
+  /// so without this the month it belongs to would be invisible).
+  Widget _monthDivider(DateTime month) {
     final dividerColor = Theme.of(context).dividerTheme.color;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -470,7 +468,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(
-              monthDividerLabel(next),
+              monthDividerLabel(month),
               style: TextStyle(
                 fontSize: 11,
                 color: Theme.of(context)
@@ -487,13 +485,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSeparator(List<Expense> expenses, int index) {
+    final current = expenses[index].date;
+    final next = expenses[index + 1].date;
+    final monthChanged =
+        current.year != next.year || current.month != next.month;
+    return monthChanged ? _monthDivider(next) : const SizedBox(height: 10);
+  }
+
   /// Right-aligned pill above the list: tap to flip between the plain
-  /// chronological history and this month's entries clustered by
-  /// category. Labelled with the view a tap switches *to*, and outlined
-  /// only while the grouped view is the one showing -- the same
-  /// on-means-ringed language as the currency toggle. The border is
-  /// always painted (transparent when off) so the pill's size never
-  /// shifts when the mode flips.
+  /// chronological history and the same history clustered by category
+  /// within each month (never mixing two different months' spending on
+  /// one category into a single total). Labelled with the view a tap
+  /// switches *to*, and outlined only while the grouped view is the one
+  /// showing -- the same on-means-ringed language as the currency toggle.
+  /// The border is always painted (transparent when off) so the pill's
+  /// size never shifts when the mode flips.
   Widget _viewModeToggle() {
     return Align(
       alignment: Alignment.centerRight,
@@ -590,44 +597,46 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// The grouped view's content: a flat list of headers and rows built up
-  /// front rather than windowed, since a single month's transactions for
-  /// a small household are never large enough for that to matter.
+  /// The grouped view's content: every month present, newest first, each
+  /// as a month divider followed by that month's categories -- the same
+  /// boundary the chronological list's own dividers draw, just with the
+  /// rows inside each month clustered by category instead of left in
+  /// date order. Built up front rather than windowed: a personal
+  /// household's whole history is still far short of where that would
+  /// start to matter.
   List<Widget> _buildGroupedSlivers({
     required List<Expense> expenses,
     required AppCurrency currency,
     required AppCurrency displayCurrency,
     required bool isConverted,
   }) {
-    final groups = buildCategoryGroups(expenses, month: DateTime.now());
-    if (groups.isEmpty) {
-      // Distinct from the flat list's empty state: there may well be
-      // history in other months, just none this one.
+    final sections = buildMonthSections(expenses);
+    if (sections.isEmpty) {
       return const [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _EmptyState(message: 'В этом месяце пока нет записей'),
-        ),
+        SliverFillRemaining(hasScrollBody: false, child: _EmptyState()),
       ];
     }
     final rows = <Widget>[];
-    for (final group in groups) {
-      rows.add(_groupHeader(
-        group,
-        currency: currency,
-        displayCurrency: displayCurrency,
-        isConverted: isConverted,
-      ));
-      for (final expense in group.items) {
-        rows.add(_buildExpenseRow(
-          expense,
+    for (final section in sections) {
+      rows.add(_monthDivider(section.month));
+      for (final group in section.groups) {
+        rows.add(_groupHeader(
+          group,
           currency: currency,
           displayCurrency: displayCurrency,
           isConverted: isConverted,
         ));
-        rows.add(const SizedBox(height: 10));
+        for (final expense in group.items) {
+          rows.add(_buildExpenseRow(
+            expense,
+            currency: currency,
+            displayCurrency: displayCurrency,
+            isConverted: isConverted,
+          ));
+          rows.add(const SizedBox(height: 10));
+        }
+        rows.add(const SizedBox(height: 14));
       }
-      rows.add(const SizedBox(height: 14));
     }
     return [
       SliverPadding(
@@ -864,9 +873,7 @@ class _Totals {
 }
 
 class _EmptyState extends StatelessWidget {
-  final String message;
-
-  const _EmptyState({this.message = 'Пока нет расходов'});
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
@@ -883,7 +890,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              message,
+              'Пока нет расходов',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
