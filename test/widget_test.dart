@@ -417,6 +417,82 @@ void main() {
     });
   });
 
+  group('buildMonthSections', () {
+    test('splits into one section per calendar month, newest first', () {
+      final expenses = [
+        Expense(
+          id: 'a',
+          amount: 100,
+          date: DateTime(2026, 7, 5),
+          category: ExpenseCategory.food,
+        ),
+        Expense(
+          id: 'b',
+          amount: 200,
+          date: DateTime(2026, 9, 1),
+          category: ExpenseCategory.food,
+        ),
+        Expense(
+          id: 'c',
+          amount: 300,
+          date: DateTime(2026, 8, 20),
+          category: ExpenseCategory.food,
+        ),
+      ];
+      final sections = buildMonthSections(expenses);
+      expect(sections.map((s) => s.month), [
+        DateTime(2026, 9),
+        DateTime(2026, 8),
+        DateTime(2026, 7),
+      ]);
+    });
+
+    test('is correctly ordered regardless of the input order', () {
+      // buildMonthSections must not assume expenses arrive newest-first.
+      final expenses = [
+        Expense(
+          id: 'old',
+          amount: 100,
+          date: DateTime(2026, 1, 1),
+          category: ExpenseCategory.food,
+        ),
+        Expense(
+          id: 'new',
+          amount: 100,
+          date: DateTime(2026, 12, 1),
+          category: ExpenseCategory.food,
+        ),
+      ];
+      final sections = buildMonthSections(expenses);
+      expect(sections.first.month, DateTime(2026, 12));
+      expect(sections.last.month, DateTime(2026, 1));
+    });
+
+    test("each section's groups never mix another month's spending in", () {
+      final september = Expense(
+        id: 'sep',
+        amount: 1000,
+        date: DateTime(2026, 9, 10),
+        category: ExpenseCategory.food,
+      );
+      final august = Expense(
+        id: 'aug',
+        amount: 5000,
+        date: DateTime(2026, 8, 10),
+        category: ExpenseCategory.food,
+      );
+      final sections = buildMonthSections([september, august]);
+      final septemberSection =
+          sections.firstWhere((s) => s.month == DateTime(2026, 9));
+      expect(septemberSection.groups.single.total, 1000);
+      expect(septemberSection.groups.single.items, [september]);
+    });
+
+    test('an empty list produces no sections', () {
+      expect(buildMonthSections(<Expense>[]), isEmpty);
+    });
+  });
+
   group('monthDividerLabel', () {
     test('omits the year for the current calendar year', () {
       final thisYear = DateTime(DateTime.now().year, 9, 1);

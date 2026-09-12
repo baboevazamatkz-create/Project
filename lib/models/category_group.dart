@@ -81,3 +81,38 @@ List<CategoryGroup> buildCategoryGroups(
   }
   return groups;
 }
+
+/// One calendar month's category breakdown -- a slice of the grouped view,
+/// the same way a run of same-month rows is a slice of the chronological
+/// one.
+class MonthSection {
+  /// The first of the month, at midnight -- a stable value to format and
+  /// to compare sections by, not tied to any particular expense's exact
+  /// timestamp.
+  final DateTime month;
+  final List<CategoryGroup> groups;
+
+  const MonthSection({required this.month, required this.groups});
+}
+
+/// Splits [expenses] into one [MonthSection] per calendar month present,
+/// newest first, each grouped by category via [buildCategoryGroups] --
+/// so "grouped by category" never merges two different months' Food
+/// into one total, the same boundary the chronological list's month
+/// dividers already draw. Months are read from the data and sorted
+/// explicitly rather than assumed to already be in order, so this gives
+/// the right answer regardless of what order [expenses] arrives in.
+List<MonthSection> buildMonthSections(List<Expense> expenses) {
+  final months = <DateTime>{};
+  for (final expense in expenses) {
+    months.add(DateTime(expense.date.year, expense.date.month));
+  }
+  final sortedMonths = months.toList()..sort((a, b) => b.compareTo(a));
+  return [
+    for (final month in sortedMonths)
+      MonthSection(
+        month: month,
+        groups: buildCategoryGroups(expenses, month: month),
+      ),
+  ];
+}
