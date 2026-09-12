@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:expense_tracker/models/category_group.dart';
 import 'package:expense_tracker/models/currency.dart';
@@ -14,6 +15,7 @@ import 'package:expense_tracker/screens/home_screen.dart'
 import 'package:expense_tracker/screens/household_screen.dart';
 import 'package:expense_tracker/screens/stats_screen.dart';
 import 'package:expense_tracker/theme.dart';
+import 'package:expense_tracker/theme_mode_controller.dart';
 import 'package:expense_tracker/widgets/add_expense_sheet.dart';
 import 'package:expense_tracker/widgets/expense_tile.dart';
 import 'package:expense_tracker/widgets/currency_symbol_icon.dart';
@@ -98,6 +100,46 @@ void main() {
     expect(find.text('Общий бюджет\nна двоих'), findsOneWidget);
     expect(find.text('Создать новый бюджет'), findsOneWidget);
     expect(find.text('Присоединиться по коду'), findsOneWidget);
+  });
+
+  testWidgets('Theme toggle flips away from what is currently on screen',
+      (tester) async {
+    // While the app is still following the system, the first tap has to
+    // invert the brightness the user is actually looking at -- not the
+    // stored ThemeMode, which is neither light nor dark at that point.
+    SharedPreferences.setMockInitialValues({});
+    addTearDown(() => ThemeModeController.mode.value = ThemeMode.system);
+    ThemeModeController.mode.value = ThemeMode.system;
+
+    late BuildContext darkContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(Brightness.dark),
+        home: Builder(builder: (context) {
+          darkContext = context;
+          return const SizedBox();
+        }),
+      ),
+    );
+    // MaterialApp lerps between themes, so the first frame after a pump
+    // still reports the previous brightness.
+    await tester.pumpAndSettle();
+    await ThemeModeController.toggle(darkContext);
+    expect(ThemeModeController.mode.value, ThemeMode.light);
+
+    late BuildContext lightContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(Brightness.light),
+        home: Builder(builder: (context) {
+          lightContext = context;
+          return const SizedBox();
+        }),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await ThemeModeController.toggle(lightContext);
+    expect(ThemeModeController.mode.value, ThemeMode.dark);
   });
 
   testWidgets('Budget switcher icons stay visible on the dark theme',

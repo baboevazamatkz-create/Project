@@ -37,81 +37,121 @@ class SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: heroGradient,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: kChampagne.withValues(alpha: 0.16)),
+        // The lit rim: champagne where the light lands, gone by the far
+        // corner. A flat outline here is what made it read as a rectangle
+        // rather than as a slab with an edge.
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            kChampagne.withValues(alpha: 0.55),
+            kChampagne.withValues(alpha: 0.14),
+            Colors.white.withValues(alpha: 0.05),
+          ],
+          stops: const [0.0, 0.42, 1.0],
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0B0A10).withValues(alpha: 0.30),
-            blurRadius: 34,
+            color: const Color(0xFF0B0A10).withValues(alpha: 0.34),
+            blurRadius: 38,
             spreadRadius: -6,
             offset: const Offset(0, 18),
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          // The light the slab is catching, from the top-left corner.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(26),
-                  gradient: RadialGradient(
-                    center: const Alignment(-0.85, -1.1),
-                    radius: 1.5,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.10),
-                      Colors.white.withValues(alpha: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _SummaryItem(
-                    label: 'СЕГОДНЯ',
-                    expenseTotal: todayExpenseTotal,
-                    incomeTotal: todayIncomeTotal,
-                    currency: currency,
-                    isApproximate: isApproximate,
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 92,
-                  margin: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.all(1),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: heroGradient,
+          borderRadius: BorderRadius.circular(25),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            // Two pools of light across the slab: a broad one from the
+            // top-left, and a tighter, brighter one riding the upper edge --
+            // the way light actually sits on a curved glass surface.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
+                    gradient: RadialGradient(
+                      center: const Alignment(-0.85, -1.1),
+                      radius: 1.5,
                       colors: [
-                        Colors.white.withValues(alpha: 0),
-                        Colors.white.withValues(alpha: 0.14),
+                        Colors.white.withValues(alpha: 0.13),
                         Colors.white.withValues(alpha: 0),
                       ],
                     ),
                   ),
                 ),
-                Expanded(
-                  child: _SummaryItem(
-                    label: 'ЗА МЕСЯЦ',
-                    expenseTotal: monthExpenseTotal,
-                    incomeTotal: monthIncomeTotal,
-                    currency: currency,
-                    isApproximate: isApproximate,
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: 70,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.09),
+                        Colors.white.withValues(alpha: 0),
+                      ],
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _SummaryItem(
+                      label: 'СЕГОДНЯ',
+                      expenseTotal: todayExpenseTotal,
+                      incomeTotal: todayIncomeTotal,
+                      currency: currency,
+                      isApproximate: isApproximate,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 92,
+                    margin: const EdgeInsets.symmetric(horizontal: 18),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withValues(alpha: 0),
+                          Colors.white.withValues(alpha: 0.14),
+                          Colors.white.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _SummaryItem(
+                      label: 'ЗА МЕСЯЦ',
+                      expenseTotal: monthExpenseTotal,
+                      incomeTotal: monthIncomeTotal,
+                      currency: currency,
+                      isApproximate: isApproximate,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
