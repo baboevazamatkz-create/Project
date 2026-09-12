@@ -188,29 +188,35 @@ class _HouseholdRow extends StatelessWidget {
                                 .textTheme
                                 .bodyMedium
                                 ?.color
-                                ?.withValues(alpha: 0.5),
+                                ?.withValues(alpha: 0.62),
                           ),
                         ),
                       ],
                     ),
                   ),
+                  // The check marks the open budget; copying its code is
+                  // just as useful there as on any other row, so the button
+                  // stays and the check sits to the left of it.
                   if (isActive)
-                    Icon(Icons.check_circle_rounded,
-                        color: goldFor(context), size: 21)
-                  else
-                    IconButton(
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: household.code));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Код скопирован')),
-                        );
-                      },
-                      // Champagne rather than the default ink, so it sits
-                      // below the active row's check in the sheet's
-                      // hierarchy.
-                      color: goldFor(context).withValues(alpha: 0.7),
-                      icon: const Icon(Icons.copy_rounded, size: 18),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 2),
+                      child: Icon(Icons.check_circle_rounded,
+                          color: goldFor(context), size: 20),
                     ),
+                  IconButton(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: household.code));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Код скопирован')),
+                      );
+                    },
+                    // Champagne rather than the default ink, so it sits
+                    // below the active row's check in the sheet's
+                    // hierarchy.
+                    color: goldFor(context).withValues(alpha: 0.7),
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    tooltip: 'Скопировать код',
+                  ),
                 ],
               ),
             ),
