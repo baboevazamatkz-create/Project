@@ -425,6 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required AppCurrency currency,
     required AppCurrency displayCurrency,
     required bool isConverted,
+    bool showCategoryLabel = true,
   }) {
     final tileAmount = isConverted
         ? convertApprox(expense.amount, from: currency, to: displayCurrency)
@@ -447,6 +448,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currency: displayCurrency,
         amountOverride: tileAmount,
         isApproximate: isConverted,
+        showCategoryLabel: showCategoryLabel,
         onLongPress: () =>
             _openAddSheet(expense.type, currency, existing: expense),
       ),
@@ -496,26 +498,17 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Right-aligned pill above the list: tap to flip between the plain
   /// chronological history and the same history clustered by category
   /// within each month (never mixing two different months' spending on
-  /// one category into a single total). Labelled with the view a tap
-  /// switches *to*, and outlined only while the grouped view is the one
-  /// showing -- the same on-means-ringed language as the currency toggle.
-  /// The border is always painted (transparent when off) so the pill's
-  /// size never shifts when the mode flips.
+  /// one category into a single total). No outline or size change marks
+  /// the state -- the icon and the label are the only things that
+  /// change, each naming the view a tap switches *to*.
   Widget _viewModeToggle() {
     return Align(
       alignment: Alignment.centerRight,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () => setState(() => _groupedByCategory = !_groupedByCategory),
-        child: Container(
+        child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: _groupedByCategory ? kBrandColor : Colors.transparent,
-              width: 1.2,
-            ),
-          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -632,6 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
             currency: currency,
             displayCurrency: displayCurrency,
             isConverted: isConverted,
+            showCategoryLabel: false,
           ));
           rows.add(const SizedBox(height: 10));
         }

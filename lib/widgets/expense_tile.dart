@@ -23,6 +23,13 @@ class ExpenseTile extends StatelessWidget {
   /// recorded amount, so the row can mark itself as approximate.
   final bool isApproximate;
 
+  /// False in the grouped view, where the category header right above the
+  /// row already names the category (or "Доход") -- repeating it on every
+  /// row under that header just duplicated the same word down the column.
+  /// The note, if there is one, takes over as the row's one line of text
+  /// instead of sitting underneath a now-redundant title.
+  final bool showCategoryLabel;
+
   const ExpenseTile({
     super.key,
     required this.expense,
@@ -30,6 +37,7 @@ class ExpenseTile extends StatelessWidget {
     this.onLongPress,
     this.amountOverride,
     this.isApproximate = false,
+    this.showCategoryLabel = true,
   });
 
   @override
@@ -76,32 +84,44 @@ class ExpenseTile extends StatelessWidget {
                   ),
                   const SizedBox(width: 14),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.normal,
-                          ),
-                        ),
-                        if (expense.note.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            expense.note,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: mutedColor,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                    child: showCategoryLabel
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              ),
+                              if (expense.note.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  expense.note,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: mutedColor,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          )
+                        : (expense.note.isEmpty
+                            ? const SizedBox.shrink()
+                            : Text(
+                                expense.note,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              )),
                   ),
                   const SizedBox(width: 12),
                   ConstrainedBox(
