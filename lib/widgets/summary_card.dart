@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import '../models/currency.dart';
 import '../theme.dart';
 
-/// The one object on screen that is supposed to look expensive: a dark,
-/// faintly metallic slab, obsidian in both themes, carrying the two figures
-/// that actually matter at a glance.
+/// The one object on screen that is supposed to look expensive: a thin
+/// sheet of glass in a champagne rim, cut from whichever material the
+/// theme is made of, carrying the two figures that matter at a glance.
 ///
 /// The ranking inside it is deliberate -- the net result is the headline,
 /// set large and light; what it was made of (income and spending) sits
@@ -40,25 +40,28 @@ class SummaryCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
-        // The lit rim: champagne where the light lands, gone by the far
-        // corner. A flat outline here is what made it read as a rectangle
-        // rather than as a slab with an edge.
+        // The rim is what holds the card together now that its fill is
+        // this thin: champagne where the light lands, gone by the far
+        // corner.
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            kChampagne.withValues(alpha: 0.55),
-            kChampagne.withValues(alpha: 0.14),
-            Colors.white.withValues(alpha: 0.05),
+            goldFor(context).withValues(alpha: 0.62),
+            goldFor(context).withValues(alpha: 0.20),
+            goldFor(context).withValues(alpha: 0.08),
           ],
           stops: const [0.0, 0.42, 1.0],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0B0A10).withValues(alpha: 0.34),
-            blurRadius: 38,
-            spreadRadius: -6,
-            offset: const Offset(0, 18),
+            color: kAccentColor.withValues(
+              alpha:
+                  Theme.of(context).brightness == Brightness.dark ? 0.34 : 0.12,
+            ),
+            blurRadius: 34,
+            spreadRadius: -8,
+            offset: const Offset(0, 16),
           ),
         ],
       ),
@@ -85,7 +88,12 @@ class SummaryCard extends StatelessWidget {
                           center: const Alignment(-0.85, -1.1),
                           radius: 1.5,
                           colors: [
-                            Colors.white.withValues(alpha: 0.13),
+                            Colors.white.withValues(
+                              alpha: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? 0.10
+                                  : 0.30,
+                            ),
                             Colors.white.withValues(alpha: 0),
                           ],
                         ),
@@ -105,7 +113,12 @@ class SummaryCard extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.white.withValues(alpha: 0.09),
+                            Colors.white.withValues(
+                              alpha: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? 0.07
+                                  : 0.22,
+                            ),
                             Colors.white.withValues(alpha: 0),
                           ],
                         ),
@@ -136,9 +149,9 @@ class SummaryCard extends StatelessWidget {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.white.withValues(alpha: 0),
-                              Colors.white.withValues(alpha: 0.14),
-                              Colors.white.withValues(alpha: 0),
+                              heroForeground(context).withValues(alpha: 0),
+                              heroForeground(context).withValues(alpha: 0.16),
+                              heroForeground(context).withValues(alpha: 0),
                             ],
                           ),
                         ),
@@ -196,7 +209,7 @@ class _SummaryItem extends StatelessWidget {
             fontSize: 10,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.4,
-            color: kChampagne.withValues(alpha: 0.85),
+            color: goldFor(context),
           ),
         ),
         const SizedBox(height: 12),
@@ -214,19 +227,19 @@ class _SummaryItem extends StatelessWidget {
             style: moneyStyle(
               size: 26,
               weight: FontWeight.w300,
-              color: kOnHero,
+              color: heroForeground(context),
               letterSpacing: -0.6,
             ),
           ),
         ),
         const SizedBox(height: 14),
         _Leg(
-          color: kIncomeColorDark,
+          color: incomeColor(context),
           amount: approx('+${currency.format.format(incomeTotal)}'),
         ),
         const SizedBox(height: 6),
         _Leg(
-          color: kExpenseColorDark,
+          color: expenseColor(context),
           amount: approx('−${currency.format.format(expenseTotal)}'),
         ),
       ],
@@ -264,7 +277,7 @@ class _Leg extends StatelessWidget {
               style: moneyStyle(
                 size: 12.5,
                 weight: FontWeight.w400,
-                color: kOnHero.withValues(alpha: 0.62),
+                color: heroForeground(context).withValues(alpha: 0.68),
                 letterSpacing: -0.1,
               ),
             ),

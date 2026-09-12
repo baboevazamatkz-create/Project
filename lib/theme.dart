@@ -78,29 +78,39 @@ LinearGradient pageGradient(BuildContext context) {
   );
 }
 
-/// The hero card is obsidian in *both* themes: a dark, faintly metallic
-/// panel on ivory paper is the single strongest "this is expensive" cue the
-/// screen has, and on Obsidian it simply reads as a raised slab.
-///
-/// It is translucent, and frosts what is behind it -- enough for the page's
-/// light and grain to come through the glass, not so much that white text
-/// on it stops being white text on something dark.
+/// The hero card is cut from whichever material the room is made of --
+/// pale on Ivory, obsidian on Obsidian -- and it is the most transparent
+/// surface in the app: a thin sheet of glass over the page's own light and
+/// grain, held together by its champagne rim rather than by its fill.
 LinearGradient heroGradientFor(BuildContext context) {
-  final alpha = _isDark(context) ? 0.72 : 0.80;
+  if (_isDark(context)) {
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        const Color(0xFF2A2831).withValues(alpha: 0.40),
+        const Color(0xFF171620).withValues(alpha: 0.48),
+        const Color(0xFF101014).withValues(alpha: 0.48),
+      ],
+      stops: const [0.0, 0.55, 1.0],
+    );
+  }
   return LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      const Color(0xFF2A2831).withValues(alpha: alpha - 0.06),
-      const Color(0xFF171620).withValues(alpha: alpha),
-      const Color(0xFF101014).withValues(alpha: alpha),
+      Colors.white.withValues(alpha: 0.52),
+      Colors.white.withValues(alpha: 0.40),
+      const Color(0xFFF3ECDF).withValues(alpha: 0.40),
     ],
     stops: const [0.0, 0.55, 1.0],
   );
 }
 
-/// Text sitting on the hero card, which is dark regardless of theme.
-const Color kOnHero = Color(0xFFF4F1EA);
+/// What is written on that card: ink on the pale version, warm white on the
+/// dark one.
+Color heroForeground(BuildContext context) =>
+    _isDark(context) ? const Color(0xFFF4F1EA) : kAccentColor;
 
 /// The body of a pane of glass: one even translucent fill. It used to be a
 /// gradient, which on a list of rows read as each row being lit from its own
@@ -109,28 +119,12 @@ Color glassFill(BuildContext context) => _isDark(context)
     ? Colors.white.withValues(alpha: 0.055)
     : Colors.white.withValues(alpha: 0.58);
 
-/// The lit edge around it: bright where the light lands, nearly gone on the
-/// far side. This one gradient is most of what separates glass from a
-/// rounded rectangle with an outline.
-LinearGradient glassEdgeGradient(BuildContext context) {
-  final isDark = _isDark(context);
-  return LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: isDark
-        ? [
-            Colors.white.withValues(alpha: 0.30),
-            Colors.white.withValues(alpha: 0.07),
-            Colors.white.withValues(alpha: 0.03),
-          ]
-        : [
-            Colors.white.withValues(alpha: 0.95),
-            Colors.white.withValues(alpha: 0.45),
-            kAccentColor.withValues(alpha: 0.12),
-          ],
-    stops: const [0.0, 0.45, 1.0],
-  );
-}
+/// The edge around a pane: one even hairline. It used to be a gradient rim,
+/// bright in one corner and dark in the other -- which is what still read as
+/// a gradient on a list of rows even after their fill was flattened.
+Color glassEdge(BuildContext context) => _isDark(context)
+    ? Colors.white.withValues(alpha: 0.13)
+    : Colors.white.withValues(alpha: 0.85);
 
 /// A sheet is a bigger, calmer pane than a row: same material, less of a
 /// gradient, so long content does not sit on a visible ramp.
@@ -141,12 +135,12 @@ LinearGradient sheetBodyGradient(BuildContext context) {
     end: Alignment.bottomCenter,
     colors: isDark
         ? [
-            const Color(0xFF24232B).withValues(alpha: 0.74),
-            const Color(0xFF16151B).withValues(alpha: 0.82)
+            const Color(0xFF24232B).withValues(alpha: 0.52),
+            const Color(0xFF16151B).withValues(alpha: 0.62)
           ]
         : [
-            Colors.white.withValues(alpha: 0.72),
-            const Color(0xFFF7F3EC).withValues(alpha: 0.80)
+            Colors.white.withValues(alpha: 0.50),
+            const Color(0xFFF7F3EC).withValues(alpha: 0.60)
           ],
   );
 }

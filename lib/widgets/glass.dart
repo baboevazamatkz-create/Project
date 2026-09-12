@@ -35,25 +35,14 @@ class GlassPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final corner = BorderRadius.circular(radius);
     Widget pane = DecoratedBox(
-      // The lit edge, drawn as a gradient the body then sits inside of --
-      // Border.all can only take one flat colour, and a uniform outline is
-      // exactly what makes fake glass look like a rounded rectangle.
       decoration: BoxDecoration(
         borderRadius: corner,
-        gradient: glassEdgeGradient(context),
+        color: glassFill(context),
+        border: Border.all(color: glassEdge(context)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(1),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(radius - 1),
-            color: glassFill(context),
-          ),
-          child: Padding(
-            padding: padding ?? EdgeInsets.zero,
-            child: child,
-          ),
-        ),
+        padding: padding ?? EdgeInsets.zero,
+        child: child,
       ),
     );
 
