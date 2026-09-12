@@ -678,7 +678,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return [
       SliverPadding(
-        padding: const EdgeInsets.fromLTRB(24, 14, 24, 100),
+        padding: const EdgeInsets.fromLTRB(24, 22, 24, 100),
         sliver: SliverList(delegate: SliverChildListDelegate(rows)),
       ),
     ];
