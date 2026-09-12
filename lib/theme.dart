@@ -115,8 +115,12 @@ Color heroForeground(BuildContext context) =>
 /// The body of a pane of glass: one even translucent fill. It used to be a
 /// gradient, which on a list of rows read as each row being lit from its own
 /// corner -- busy, and the thing that made the list look tilted.
+///
+/// On Obsidian the fill is a dark tone rather than a wash of white: a few
+/// percent of white over near-black is barely a surface at all, and a
+/// column of rows made of it read as too thin to hold anything.
 Color glassFill(BuildContext context) => _isDark(context)
-    ? Colors.white.withValues(alpha: 0.055)
+    ? const Color(0xFF1D1C23).withValues(alpha: 0.86)
     : Colors.white.withValues(alpha: 0.58);
 
 /// The edge around a pane: one even hairline. It used to be a gradient rim,
@@ -319,6 +323,90 @@ ThemeData buildAppTheme(Brightness brightness) {
         fontSize: 14,
         color: ink.withValues(alpha: 0.7),
         height: 1.4,
+      ),
+    ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor:
+          isDark ? const Color(0xFF1B1A21) : const Color(0xFFFBF8F2),
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: hairline),
+      ),
+      headerBackgroundColor: isDark ? const Color(0xFF24232B) : kAccentColor,
+      headerForegroundColor: const Color(0xFFF6F2EA),
+      headerHeadlineStyle: const TextStyle(
+        fontFamily: 'Onest',
+        fontSize: 27,
+        fontWeight: FontWeight.w300,
+        letterSpacing: -0.5,
+      ),
+      headerHelpStyle: const TextStyle(
+        fontFamily: 'Onest',
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1.3,
+      ),
+      weekdayStyle: TextStyle(
+        fontFamily: 'Onest',
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.6,
+        color: ink.withValues(alpha: 0.45),
+      ),
+      dayStyle: const TextStyle(
+        fontFamily: 'Onest',
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return isDark ? kAccentColor : const Color(0xFFF6F2EA);
+        }
+        if (states.contains(WidgetState.disabled)) {
+          return ink.withValues(alpha: 0.28);
+        }
+        return ink;
+      }),
+      dayBackgroundColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.selected)
+              ? (isDark ? kChampagne : kGoldDeep)
+              : null),
+      todayForegroundColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.selected)
+              ? (isDark ? kAccentColor : const Color(0xFFF6F2EA))
+              : (isDark ? kChampagne : kGoldDeep)),
+      todayBorder: BorderSide(color: isDark ? kChampagne : kGoldDeep),
+      yearStyle: const TextStyle(
+        fontFamily: 'Onest',
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      yearForegroundColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.selected)
+              ? (isDark ? kAccentColor : const Color(0xFFF6F2EA))
+              : ink),
+      yearBackgroundColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.selected)
+              ? (isDark ? kChampagne : kGoldDeep)
+              : null),
+      dividerColor: hairline,
+      cancelButtonStyle: TextButton.styleFrom(
+        foregroundColor: ink.withValues(alpha: 0.7),
+        textStyle: const TextStyle(
+          fontFamily: 'Onest',
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      confirmButtonStyle: TextButton.styleFrom(
+        foregroundColor: isDark ? kChampagne : kGoldDeep,
+        textStyle: const TextStyle(
+          fontFamily: 'Onest',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     ),
     snackBarTheme: SnackBarThemeData(

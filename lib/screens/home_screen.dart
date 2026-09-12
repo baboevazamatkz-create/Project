@@ -701,7 +701,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                titleSpacing: 8,
+                titleSpacing: 24,
                 actions: [
                   _themeToggleButton(),
                   _viewModeToggle(),
@@ -758,6 +758,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       tooltip: 'Мои бюджеты',
                     ),
                   ),
+                  const SizedBox(width: 14),
                 ],
               ),
               floatingActionButton: Column(
@@ -797,9 +798,12 @@ class _HomeScreenState extends State<HomeScreen> {
               body: AppBackgroundPattern(
                 child: !snapshot.hasData
                     ? const Center(child: CircularProgressIndicator())
-                    : CustomScrollView(
-                        slivers: [
-                          SliverPadding(
+                    // The totals stay put and only the history moves: the
+                    // card is the one thing on this screen you want to be
+                    // able to read while scrolling through everything else.
+                    : Column(
+                        children: [
+                          Padding(
                             padding: EdgeInsets.fromLTRB(
                               20,
                               MediaQuery.of(context).padding.top +
@@ -808,58 +812,62 @@ class _HomeScreenState extends State<HomeScreen> {
                               20,
                               8,
                             ),
-                            sliver: SliverToBoxAdapter(
-                              child: _tourStep(
-                                tourKey: _summaryCardKey,
-                                title: 'Итоги',
-                                description: 'Здесь видно, сколько '
-                                    'потрачено и заработано сегодня и за '
-                                    'месяц',
-                                targetShapeBorder: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(24),
-                                  ),
+                            child: _tourStep(
+                              tourKey: _summaryCardKey,
+                              title: 'Итоги',
+                              description: 'Здесь видно, сколько '
+                                  'потрачено и заработано сегодня и за '
+                                  'месяц',
+                              targetShapeBorder: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(24),
                                 ),
-                                child: SummaryCard(
-                                  todayExpenseTotal: displayTotals.todayExpense,
-                                  todayIncomeTotal: displayTotals.todayIncome,
-                                  monthExpenseTotal: displayTotals.monthExpense,
-                                  monthIncomeTotal: displayTotals.monthIncome,
-                                  currency: displayCurrency,
-                                  isApproximate: isConverted,
-                                ),
+                              ),
+                              child: SummaryCard(
+                                todayExpenseTotal: displayTotals.todayExpense,
+                                todayIncomeTotal: displayTotals.todayIncome,
+                                monthExpenseTotal: displayTotals.monthExpense,
+                                monthIncomeTotal: displayTotals.monthIncome,
+                                currency: displayCurrency,
+                                isApproximate: isConverted,
                               ),
                             ),
                           ),
-                          if (_groupedByCategory)
-                            ..._buildGroupedSlivers(
-                              expenses: expenses,
-                              currency: currency,
-                              displayCurrency: displayCurrency,
-                              isConverted: isConverted,
-                            )
-                          else if (expenses.isEmpty)
-                            const SliverFillRemaining(
-                              hasScrollBody: false,
-                              child: _EmptyState(),
-                            )
-                          else
-                            SliverPadding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(24, 8, 24, 100),
-                              sliver: SliverList.separated(
-                                itemCount: expenses.length,
-                                separatorBuilder: (context, index) =>
-                                    _buildSeparator(expenses, index),
-                                itemBuilder: (context, index) =>
-                                    _buildExpenseRow(
-                                  expenses[index],
-                                  currency: currency,
-                                  displayCurrency: displayCurrency,
-                                  isConverted: isConverted,
-                                ),
-                              ),
+                          Expanded(
+                            child: CustomScrollView(
+                              slivers: [
+                                if (_groupedByCategory)
+                                  ..._buildGroupedSlivers(
+                                    expenses: expenses,
+                                    currency: currency,
+                                    displayCurrency: displayCurrency,
+                                    isConverted: isConverted,
+                                  )
+                                else if (expenses.isEmpty)
+                                  const SliverFillRemaining(
+                                    hasScrollBody: false,
+                                    child: _EmptyState(),
+                                  )
+                                else
+                                  SliverPadding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        24, 0, 24, 100),
+                                    sliver: SliverList.separated(
+                                      itemCount: expenses.length,
+                                      separatorBuilder: (context, index) =>
+                                          _buildSeparator(expenses, index),
+                                      itemBuilder: (context, index) =>
+                                          _buildExpenseRow(
+                                        expenses[index],
+                                        currency: currency,
+                                        displayCurrency: displayCurrency,
+                                        isConverted: isConverted,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
+                          ),
                         ],
                       ),
               ),
