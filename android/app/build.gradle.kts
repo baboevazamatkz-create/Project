@@ -65,17 +65,19 @@ android {
             signingConfig =
                 signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
 
-            // The Dart half of the app is compiled ahead of time and is not
-            // touched by any of this. The Java and Kotlin half is: the
-            // Firestore and Auth SDKs the home-screen widget needs are large,
-            // and without R8 every class in them ships whether or not
-            // anything calls it.
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
+            // R8 is deliberately left off. It was turned on for exactly one
+            // build, and that build came out byte-for-byte the same size:
+            // of a 59.7 MB APK, 57.1 MB is native code -- the Flutter engine
+            // and the ahead-of-time compiled Dart, for three architectures --
+            // which R8 never touches. Everything it could shrink, dex and
+            // resources together, is 2.6 MB, and it shrank none of it.
+            //
+            // What actually makes the download small is the bundle: Play
+            // sends one architecture instead of three, so a phone fetches
+            // about 22 MB. Shrinking buys nothing here and can break a class
+            // reached by name -- the widget is built from the manifest, not
+            // from a call -- so it stays off until there is a measurement
+            // that says otherwise.
         }
     }
 
