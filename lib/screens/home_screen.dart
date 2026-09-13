@@ -16,6 +16,7 @@ import '../widgets/add_expense_sheet.dart';
 import '../widgets/app_background_pattern.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/glass.dart';
+import '../widgets/readable_width.dart';
 import '../widgets/household_switcher_sheet.dart';
 import '../theme.dart';
 import '../theme_mode_controller.dart';
@@ -34,38 +35,91 @@ String monthDividerLabel(DateTime date) {
   return date.year == DateTime.now().year ? month : '$month ${date.year}';
 }
 
-Showcase _tourStep({
+/// One step of the onboarding tour, dressed in the room it is shown in.
+///
+/// The tooltip used to be a white card with black text, which was fine
+/// against the old palette and wrong against both of the current ones --
+/// it glared on Obsidian and clashed with the paper on Ivory. It is the
+/// same surface the bottom sheets use now, with champagne titles, and its
+/// buttons are built per step from [context] rather than registered once:
+/// the theme can be flipped from this very screen, and colours captured at
+/// registration would have stayed behind.
+Showcase _tourStep(
+  BuildContext context, {
   required GlobalKey tourKey,
   required String title,
   required String description,
   required Widget child,
   ShapeBorder targetShapeBorder = const CircleBorder(),
-  List<TooltipActionButton>? tooltipActions,
-  TooltipActionConfig? tooltipActionConfig,
+  bool isLast = false,
 }) {
+  final ink = accentForeground(context);
+  final gold = goldFor(context);
   return Showcase(
     key: tourKey,
     title: title,
-    titleTextStyle: const TextStyle(
-      fontSize: 16,
+    titleTextStyle: TextStyle(
+      fontFamily: 'Onest',
+      fontSize: 15,
       fontWeight: FontWeight.w600,
-      color: kBrandColor,
+      letterSpacing: -0.1,
+      color: gold,
     ),
     description: description,
     descTextStyle: TextStyle(
+      fontFamily: 'Onest',
       fontSize: 13,
-      color: Colors.black.withValues(alpha: 0.65),
+      height: 1.45,
+      fontWeight: FontWeight.w400,
+      color: ink.withValues(alpha: 0.72),
     ),
-    tooltipBackgroundColor: Colors.white,
-    tooltipBorderRadius: BorderRadius.circular(16),
-    tooltipPadding: const EdgeInsets.all(16),
+    tooltipBackgroundColor: sheetSurface(context),
+    overlayColor: _isDarkTheme(context) ? Colors.black : kAccentColor,
+    overlayOpacity: 0.62,
+    tooltipBorderRadius: BorderRadius.circular(18),
+    tooltipPadding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
     targetShapeBorder: targetShapeBorder,
     targetPadding: const EdgeInsets.all(4),
-    tooltipActions: tooltipActions,
-    tooltipActionConfig: tooltipActionConfig,
+    tooltipActionConfig: TooltipActionConfig(
+      position: TooltipActionPosition.inside,
+      alignment:
+          isLast ? MainAxisAlignment.end : MainAxisAlignment.spaceBetween,
+      gapBetweenContentAndAction: 12,
+    ),
+    tooltipActions: [
+      if (!isLast)
+        TooltipActionButton(
+          type: TooltipDefaultActionType.skip,
+          name: 'Пропустить',
+          backgroundColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          textStyle: TextStyle(
+            fontFamily: 'Onest',
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: ink.withValues(alpha: 0.5),
+          ),
+        ),
+      TooltipActionButton(
+        type: TooltipDefaultActionType.next,
+        name: isLast ? 'Готово' : 'Далее',
+        backgroundColor: gold,
+        borderRadius: BorderRadius.circular(10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        textStyle: const TextStyle(
+          fontFamily: 'Onest',
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFFF6F2EA),
+        ),
+      ),
+    ],
     child: child,
   );
 }
+
+bool _isDarkTheme(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
 
 class HomeScreen extends StatefulWidget {
   final Household household;
@@ -86,7 +140,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const _tourSeenKey = 'onboarding_tour_seen';
+  // Bumped when the tour changed: anyone who had seen the old five steps
+  // would otherwise never be shown the four controls added since.
+  static const _tourSeenKey = 'onboarding_tour_seen_v2';
 
   final _repository = ExpenseRepository();
   final _settingsRepository = HouseholdSettingsRepository();
@@ -94,6 +150,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final _incomeFabKey = GlobalKey();
   final _expenseFabKey = GlobalKey();
   final _summaryCardKey = GlobalKey();
+  final _clearKey = GlobalKey();
+  final _themeKey = GlobalKey();
+  final _viewModeKey = GlobalKey();
+  final _currencyKey = GlobalKey();
   final _statsKey = GlobalKey();
   final _switcherKey = GlobalKey();
   bool _tourStarted = false;
@@ -110,6 +170,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // whenever the household changes, so switching budgets never leaves a
   // stale conversion showing.
   AppCurrency? _displayCurrency;
+
+  // The flattened grouped view, kept against the expense list it came
+  // from: between snapshots Firestore hands back the same instance, so
+  // identity is enough to know the grouping still holds.
+  List<Expense>? _groupedRowsFor;
+  List<_GroupedRow>? _cachedGroupedRows;
 
   // The list's own controller, read by the top-edge fade so the band can
   // follow the scroll offset.
@@ -136,35 +202,6 @@ class _HomeScreenState extends State<HomeScreen> {
       onDismiss: (_) => _markTourSeen(),
       skipIfTargetNotPresent: true,
       blurValue: 2,
-      overlayOpacity: 0.65,
-      globalTooltipActionConfig: const TooltipActionConfig(
-        position: TooltipActionPosition.inside,
-        alignment: MainAxisAlignment.spaceBetween,
-        gapBetweenContentAndAction: 14,
-      ),
-      globalTooltipActions: [
-        TooltipActionButton(
-          type: TooltipDefaultActionType.skip,
-          name: 'Пропустить',
-          backgroundColor: Colors.transparent,
-          textStyle: TextStyle(
-            color: Colors.black.withValues(alpha: 0.45),
-            fontSize: 13,
-          ),
-          hideActionWidgetForShowcase: [_switcherKey],
-        ),
-        TooltipActionButton(
-          type: TooltipDefaultActionType.next,
-          name: 'Далее',
-          backgroundColor: kBrandColor,
-          textStyle: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-          hideActionWidgetForShowcase: [_switcherKey],
-        ),
-      ],
     );
   }
 
@@ -211,9 +248,17 @@ class _HomeScreenState extends State<HomeScreen> {
   /// expenses stream has delivered its first snapshot — on a slow
   /// connection that can take a while, and this package finishes the whole
   /// tour early if a step's target isn't rendered when its turn comes up.
-  Future<void> _maybeStartTour({required bool hasContent}) async {
+  // Called from build, so the common path -- "already started" -- has to be
+  // synchronous: an async method allocates a Future even when it returns on
+  // its first line, and that would be one per frame for the life of the
+  // screen.
+  void _maybeStartTour({required bool hasContent}) {
     if (_tourStarted || !hasContent) return;
     _tourStarted = true;
+    _startTour();
+  }
+
+  Future<void> _startTour() async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_tourSeenKey) ?? false) return;
     if (!mounted) return;
@@ -231,8 +276,21 @@ class _HomeScreenState extends State<HomeScreen> {
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
     }
+    // Ordered the way the screen reads: what you are looking at, the two
+    // things you do with it, the one destructive button, then the app bar
+    // from left to right.
     ShowcaseView.get().startShowCase(
-      [_expenseFabKey, _incomeFabKey, _summaryCardKey, _statsKey, _switcherKey],
+      [
+        _summaryCardKey,
+        _expenseFabKey,
+        _incomeFabKey,
+        _clearKey,
+        _themeKey,
+        _viewModeKey,
+        _currencyKey,
+        _statsKey,
+        _switcherKey,
+      ],
       delay: const Duration(milliseconds: 250),
     );
   }
@@ -454,10 +512,15 @@ class _HomeScreenState extends State<HomeScreen> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         decoration: BoxDecoration(
-          color: kExpenseColor,
+          // Was the light theme's constant in both rooms, so on Obsidian
+          // the swipe flashed a colour from the other palette.
+          color: expenseColor(context),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+        child: const Icon(
+          Icons.delete_outline_rounded,
+          color: Color(0xFFF6F2EA),
+        ),
       ),
       onDismissed: (_) => _deleteExpense(expense),
       child: ExpenseTile(
@@ -574,6 +637,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final total = isConverted
         ? convertApprox(group.total, from: currency, to: displayCurrency)
         : group.total;
+    // buildCategoryGroups has no BuildContext, so income's colour is fixed
+    // to the light palette there and resolved for the current room here.
+    final color = group.isIncome ? incomeColor(context) : group.color;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10, top: 6, left: 2, right: 2),
       child: Row(
@@ -583,14 +649,14 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: group.color.withValues(alpha: 0.13),
+              color: color.withValues(alpha: 0.13),
               shape: BoxShape.circle,
               border: Border.all(
-                color: group.color.withValues(alpha: 0.22),
+                color: color.withValues(alpha: 0.22),
                 width: 1,
               ),
             ),
-            child: Icon(group.icon, color: group.color, size: 16),
+            child: Icon(group.icon, color: color, size: 16),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -616,7 +682,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: moneyStyle(
                 size: 13,
                 weight: FontWeight.w600,
-                color: group.color,
+                color: color,
               ),
             ),
           ),
@@ -632,47 +698,70 @@ class _HomeScreenState extends State<HomeScreen> {
   /// date order. Built up front rather than windowed: a personal
   /// household's whole history is still far short of where that would
   /// start to matter.
-  List<Widget> _buildGroupedSlivers({
-    required List<Expense> expenses,
+  /// Flattens the grouped view into one row list, cached against the
+  /// expenses it was built from.
+  ///
+  /// The grouped view used to build every widget up front and hand the
+  /// whole thing to a SliverChildListDelegate, which meant two costs on
+  /// every rebuild -- regrouping the history, and constructing a widget
+  /// per transaction whether or not it was anywhere near the screen.
+  /// Flipping the theme or stepping the currency paid both. These rows
+  /// are plain value objects instead, so the grouping happens once per
+  /// snapshot and the widgets are built lazily as they scroll in, the
+  /// way the flat list already worked.
+  List<_GroupedRow> _groupedRows(List<Expense> expenses) {
+    if (identical(_groupedRowsFor, expenses) && _cachedGroupedRows != null) {
+      return _cachedGroupedRows!;
+    }
+    final rows = <_GroupedRow>[];
+    for (final section in buildMonthSections(expenses)) {
+      rows.add(_GroupedRow.month(section.month));
+      for (final group in section.groups) {
+        rows.add(_GroupedRow.header(group));
+        for (var i = 0; i < group.items.length; i++) {
+          rows.add(_GroupedRow.expense(
+            group.items[i],
+            isLastInGroup: i == group.items.length - 1,
+          ));
+        }
+      }
+    }
+    _groupedRowsFor = expenses;
+    _cachedGroupedRows = rows;
+    return rows;
+  }
+
+  Widget _buildGroupedRow(
+    _GroupedRow row, {
     required AppCurrency currency,
     required AppCurrency displayCurrency,
     required bool isConverted,
   }) {
-    final sections = buildMonthSections(expenses);
-    if (sections.isEmpty) {
-      return const [
-        SliverFillRemaining(hasScrollBody: false, child: _EmptyState()),
-      ];
+    final month = row.month;
+    if (month != null) return _monthDivider(month);
+
+    final group = row.group;
+    if (group != null) {
+      return _groupHeader(
+        group,
+        currency: currency,
+        displayCurrency: displayCurrency,
+        isConverted: isConverted,
+      );
     }
-    final rows = <Widget>[];
-    for (final section in sections) {
-      rows.add(_monthDivider(section.month));
-      for (final group in section.groups) {
-        rows.add(_groupHeader(
-          group,
-          currency: currency,
-          displayCurrency: displayCurrency,
-          isConverted: isConverted,
-        ));
-        for (final expense in group.items) {
-          rows.add(_buildExpenseRow(
-            expense,
-            currency: currency,
-            displayCurrency: displayCurrency,
-            isConverted: isConverted,
-            showIcon: false,
-          ));
-          rows.add(const SizedBox(height: 7));
-        }
-        rows.add(const SizedBox(height: 14));
-      }
-    }
-    return [
-      SliverPadding(
-        padding: const EdgeInsets.fromLTRB(24, 22, 24, 100),
-        sliver: SliverList(delegate: SliverChildListDelegate(rows)),
+
+    // 7 between rows of a group, 21 before the next group's header --
+    // the same rhythm the eagerly built version had.
+    return Padding(
+      padding: EdgeInsets.only(bottom: row.isLastInGroup ? 21 : 7),
+      child: _buildExpenseRow(
+        row.expense!,
+        currency: currency,
+        displayCurrency: displayCurrency,
+        isConverted: isConverted,
+        showIcon: false,
       ),
-    ];
+    );
   }
 
   @override
@@ -726,14 +815,37 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 titleSpacing: 24,
                 actions: [
-                  _themeToggleButton(),
-                  _viewModeToggle(),
-                  _currencyToggleButton(currency),
                   _tourStep(
+                    context,
+                    tourKey: _themeKey,
+                    title: 'Тема',
+                    description: 'Светлая и тёмная. Выбор запоминается и '
+                        'переживает перезапуск',
+                    child: _themeToggleButton(),
+                  ),
+                  _tourStep(
+                    context,
+                    tourKey: _viewModeKey,
+                    title: 'Список или категории',
+                    description: 'Вся история подряд — или траты текущего '
+                        'месяца, собранные по категориям',
+                    child: _viewModeToggle(),
+                  ),
+                  _tourStep(
+                    context,
+                    tourKey: _currencyKey,
+                    title: 'Валюта',
+                    description: 'Пересчитывает суммы в рубли, тенге или '
+                        'доллары. Пересчёт приблизительный и помечен знаком ≈, '
+                        'записи остаются в валюте бюджета',
+                    child: _currencyToggleButton(currency),
+                  ),
+                  _tourStep(
+                    context,
                     tourKey: _statsKey,
                     title: 'Статистика',
-                    description:
-                        'Диаграмма расходов по категориям и история за месяц',
+                    description: 'Диаграмма трат по категориям, лимиты на '
+                        'каждую и итоги за полгода',
                     child: IconButton(
                       onPressed: () => _openStats(expenses, currency),
                       icon: const Icon(Icons.pie_chart_rounded),
@@ -741,26 +853,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   _tourStep(
+                    context,
                     tourKey: _switcherKey,
                     title: 'Мои бюджеты',
                     description: 'Переключайтесь между бюджетами или '
                         'создайте новый, чтобы вести расходы с близкими',
-                    tooltipActionConfig: const TooltipActionConfig(
-                      position: TooltipActionPosition.inside,
-                      alignment: MainAxisAlignment.end,
-                    ),
-                    tooltipActions: [
-                      const TooltipActionButton(
-                        type: TooltipDefaultActionType.next,
-                        name: 'Готово',
-                        backgroundColor: kBrandColor,
-                        textStyle: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+                    isLast: true,
                     child: IconButton(
                       onPressed:
                           _switcherLoading ? null : _showHouseholdSwitcher,
@@ -786,121 +884,126 @@ class _HomeScreenState extends State<HomeScreen> {
               // two rose over the toast.
               floatingActionButtonLocation:
                   FloatingActionButtonLocation.centerFloat,
-              floatingActionButton: Padding(
-                padding: const EdgeInsets.only(left: 22, right: 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // An empty box still anchors spaceBetween, so the pair on
-                    // the right keeps its place before the data arrives.
-                    snapshot.hasData ? _clearButton() : const SizedBox.shrink(),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _tourStep(
-                          tourKey: _expenseFabKey,
-                          title: 'Добавить расход',
-                          description:
-                              'Нажмите, чтобы записать трату. Смахните '
-                              'запись влево, чтобы удалить, или зажмите её, '
-                              'чтобы изменить',
-                          child: FloatingActionButton(
-                            heroTag: 'add_expense',
-                            backgroundColor:
-                                (Theme.of(context).brightness == Brightness.dark
-                                        ? kChampagne
-                                        : kAccentColor)
-                                    .withValues(alpha: 0.88),
-                            onPressed: () => _openAddSheet(
-                                TransactionType.expense, currency),
-                            tooltip: 'Добавить расход',
-                            child: const Icon(Icons.remove_rounded),
+              floatingActionButton: ReadableWidth(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 22, right: 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // An empty box still anchors spaceBetween, so the pair on
+                      // the right keeps its place before the data arrives.
+                      snapshot.hasData
+                          ? _tourStep(
+                              context,
+                              tourKey: _clearKey,
+                              title: 'Очистить бюджет',
+                              description: 'Удаляет все записи этого бюджета '
+                                  'у всех его участников. Спросит подтверждение',
+                              child: _clearButton(),
+                            )
+                          : const SizedBox.shrink(),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _tourStep(
+                            context,
+                            tourKey: _expenseFabKey,
+                            title: 'Добавить расход',
+                            description:
+                                'Нажмите, чтобы записать трату. Смахните '
+                                'запись влево, чтобы удалить, или зажмите её, '
+                                'чтобы изменить',
+                            child: FloatingActionButton(
+                              heroTag: 'add_expense',
+                              backgroundColor: (Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? kChampagne
+                                      : kAccentColor)
+                                  .withValues(alpha: 0.88),
+                              onPressed: () => _openAddSheet(
+                                  TransactionType.expense, currency),
+                              tooltip: 'Добавить расход',
+                              child: const Icon(Icons.remove_rounded),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        _tourStep(
-                          tourKey: _incomeFabKey,
-                          title: 'Добавить доход',
-                          description:
-                              'Нажмите, чтобы записать поступление денег',
-                          child: FloatingActionButton(
-                            heroTag: 'add_income',
-                            backgroundColor:
-                                incomeColor(context).withValues(alpha: 0.88),
-                            foregroundColor: const Color(0xFFF6F2EA),
-                            onPressed: () =>
-                                _openAddSheet(TransactionType.income, currency),
-                            tooltip: 'Добавить доход',
-                            child: const Icon(Icons.add_rounded),
+                          const SizedBox(height: 14),
+                          _tourStep(
+                            context,
+                            tourKey: _incomeFabKey,
+                            title: 'Добавить доход',
+                            description:
+                                'Нажмите, чтобы записать поступление денег',
+                            child: FloatingActionButton(
+                              heroTag: 'add_income',
+                              backgroundColor:
+                                  incomeColor(context).withValues(alpha: 0.88),
+                              foregroundColor: const Color(0xFFF6F2EA),
+                              onPressed: () => _openAddSheet(
+                                  TransactionType.income, currency),
+                              tooltip: 'Добавить доход',
+                              child: const Icon(Icons.add_rounded),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               body: AppBackgroundPattern(
-                child: Stack(
-                  children: [
-                    !snapshot.hasData
-                        ? const Center(child: CircularProgressIndicator())
-                        // The totals stay put and only the history moves: the
-                        // card is the one thing on this screen you want to be
-                        // able to read while scrolling through everything else.
-                        : Column(
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.fromLTRB(
-                                  20,
-                                  MediaQuery.of(context).padding.top +
-                                      kToolbarHeight +
-                                      10,
-                                  20,
-                                  8,
+                child: ReadableWidth(
+                  child: !snapshot.hasData
+                      ? const Center(child: CircularProgressIndicator())
+                      // The totals stay put and only the history moves: the
+                      // card is the one thing on this screen you want to be
+                      // able to read while scrolling through everything else.
+                      : Column(
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                20,
+                                MediaQuery.of(context).padding.top +
+                                    kToolbarHeight +
+                                    10,
+                                20,
+                                8,
+                              ),
+                              child: _tourStep(
+                                context,
+                                tourKey: _summaryCardKey,
+                                title: 'Итоги',
+                                description: 'Сколько потрачено и '
+                                    'заработано сегодня и за месяц — '
+                                    'и то и другое видно, пока листаете '
+                                    'список',
+                                targetShapeBorder: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(24),
+                                  ),
                                 ),
-                                child: _tourStep(
-                                  tourKey: _summaryCardKey,
-                                  title: 'Итоги',
-                                  description: 'Здесь видно, сколько '
-                                      'потрачено и заработано сегодня и за '
-                                      'месяц',
-                                  targetShapeBorder:
-                                      const RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(24),
-                                    ),
-                                  ),
-                                  child: SummaryCard(
-                                    todayExpenseTotal:
-                                        displayTotals.todayExpense,
-                                    todayIncomeTotal: displayTotals.todayIncome,
-                                    monthExpenseTotal:
-                                        displayTotals.monthExpense,
-                                    monthIncomeTotal: displayTotals.monthIncome,
-                                    currency: displayCurrency,
-                                    isApproximate: isConverted,
-                                  ),
+                                child: SummaryCard(
+                                  todayExpenseTotal: displayTotals.todayExpense,
+                                  todayIncomeTotal: displayTotals.todayIncome,
+                                  monthExpenseTotal: displayTotals.monthExpense,
+                                  monthIncomeTotal: displayTotals.monthIncome,
+                                  currency: displayCurrency,
+                                  isApproximate: isConverted,
                                 ),
                               ),
-                              Expanded(
-                                // Rows slide up under the totals card and
-                                // dissolve there. Without this the list is simply
-                                // clipped at the card's edge, which reads as a
-                                // rendering mistake rather than as depth.
-                                child: TopFadeMask(
+                            ),
+                            Expanded(
+                              // Rows slide up under the totals card and
+                              // dissolve there. Without this the list is simply
+                              // clipped at the card's edge, which reads as a
+                              // rendering mistake rather than as depth.
+                              child: TopFadeMask(
+                                controller: _listController,
+                                child: CustomScrollView(
                                   controller: _listController,
-                                  child: CustomScrollView(
-                                    controller: _listController,
-                                    slivers: [
-                                      if (_groupedByCategory)
-                                        ..._buildGroupedSlivers(
-                                          expenses: expenses,
-                                          currency: currency,
-                                          displayCurrency: displayCurrency,
-                                          isConverted: isConverted,
-                                        )
-                                      else if (expenses.isEmpty)
+                                  slivers: [
+                                    if (_groupedByCategory)
+                                      if (expenses.isEmpty)
                                         const SliverFillRemaining(
                                           hasScrollBody: false,
                                           child: _EmptyState(),
@@ -909,28 +1012,46 @@ class _HomeScreenState extends State<HomeScreen> {
                                         SliverPadding(
                                           padding: const EdgeInsets.fromLTRB(
                                               24, 22, 24, 100),
-                                          sliver: SliverList.separated(
-                                            itemCount: expenses.length,
-                                            separatorBuilder:
-                                                (context, index) =>
-                                                    _buildSeparator(
-                                                        expenses, index),
+                                          sliver: SliverList.builder(
+                                            itemCount:
+                                                _groupedRows(expenses).length,
                                             itemBuilder: (context, index) =>
-                                                _buildExpenseRow(
-                                              expenses[index],
+                                                _buildGroupedRow(
+                                              _groupedRows(expenses)[index],
                                               currency: currency,
                                               displayCurrency: displayCurrency,
                                               isConverted: isConverted,
                                             ),
                                           ),
+                                        )
+                                    else if (expenses.isEmpty)
+                                      const SliverFillRemaining(
+                                        hasScrollBody: false,
+                                        child: _EmptyState(),
+                                      )
+                                    else
+                                      SliverPadding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            24, 22, 24, 100),
+                                        sliver: SliverList.separated(
+                                          itemCount: expenses.length,
+                                          separatorBuilder: (context, index) =>
+                                              _buildSeparator(expenses, index),
+                                          itemBuilder: (context, index) =>
+                                              _buildExpenseRow(
+                                            expenses[index],
+                                            currency: currency,
+                                            displayCurrency: displayCurrency,
+                                            isConverted: isConverted,
+                                          ),
                                         ),
-                                    ],
-                                  ),
+                                      ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
-                  ],
+                            ),
+                          ],
+                        ),
                 ),
               ),
             );
@@ -1003,4 +1124,28 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One line of the grouped view: a month divider, a category header, or a
+/// transaction. Exactly one field is non-null.
+class _GroupedRow {
+  final DateTime? month;
+  final CategoryGroup? group;
+  final Expense? expense;
+
+  /// Only meaningful on an expense row: the last of a category carries the
+  /// wider gap that separates one category from the next.
+  final bool isLastInGroup;
+
+  const _GroupedRow._({
+    this.month,
+    this.group,
+    this.expense,
+    this.isLastInGroup = false,
+  });
+
+  const _GroupedRow.month(DateTime value) : this._(month: value);
+  const _GroupedRow.header(CategoryGroup value) : this._(group: value);
+  const _GroupedRow.expense(Expense value, {bool isLastInGroup = false})
+      : this._(expense: value, isLastInGroup: isLastInGroup);
 }

@@ -15,6 +15,7 @@ import 'package:expense_tracker/screens/home_screen.dart'
 import 'package:expense_tracker/screens/household_screen.dart';
 import 'package:expense_tracker/screens/stats_screen.dart';
 import 'package:expense_tracker/theme.dart';
+import 'package:expense_tracker/widgets/readable_width.dart';
 import 'package:expense_tracker/theme_mode_controller.dart';
 import 'package:expense_tracker/widgets/add_expense_sheet.dart';
 import 'package:expense_tracker/widgets/expense_tile.dart';
@@ -719,6 +720,37 @@ void main() {
     );
     expect(find.byIcon(ExpenseCategory.food.icon), findsOneWidget);
     expect(find.text('Еда'), findsOneWidget);
+  });
+
+  test('Income is the one group that has to be recoloured per theme', () {
+    // buildCategoryGroups is a pure function with no BuildContext, so the
+    // colour it stores is the light palette's. The flag is what lets the
+    // grouped view swap in Obsidian's green instead of drawing Ivory's.
+    final groups = buildCategoryGroups(
+      [
+        Expense(
+            id: 'i',
+            amount: 10,
+            date: DateTime(2026, 9, 3),
+            type: TransactionType.income),
+        Expense(
+            id: 'e',
+            amount: 5,
+            category: ExpenseCategory.food,
+            date: DateTime(2026, 9, 3)),
+      ],
+      month: DateTime(2026, 9),
+    );
+    expect(groups.where((g) => g.isIncome).length, 1);
+    expect(groups.firstWhere((g) => g.isIncome).label, 'Доход');
+    expect(groups.where((g) => !g.isIncome).every((g) => !g.isIncome), isTrue);
+  });
+
+  test('The reading width caps wide screens without pinching narrow ones', () {
+    // A phone is narrower than the cap, so nothing about the current
+    // layout changes; the cap only bites on tablets and desktop browsers.
+    expect(ReadableWidth.maxWidth, greaterThan(430));
+    expect(ReadableWidth.maxWidth, lessThan(768));
   });
 
   test('Each room sets the phone\'s bars to icons it can be read against', () {

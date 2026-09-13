@@ -34,10 +34,6 @@ Color overBudgetColor(BuildContext context) =>
 const Color kIncomeColorDark = Color(0xFF6FA083);
 const Color kExpenseColorDark = Color(0xFFC07D6C);
 
-/// Kept as the app's single "brand" hook (buttons, rings, active states)
-/// so widgets that want the accent don't each pick their own gold.
-const Color kBrandColor = kGoldDeep;
-
 /// The tone the background texture is drawn in — always at a very low
 /// opacity. It should read as the grain of the paper, never as content.
 const Color kPatternColor = kChampagne;
