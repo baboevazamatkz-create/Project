@@ -38,6 +38,24 @@ https://solidus-scan.<ваше-имя>.workers.dev
 
 Это и есть адрес сканера.
 
+## Если Node.js на компьютере нет
+
+То же самое делается прямо в браузере:
+
+1. https://dash.cloudflare.com → **Workers & Pages** → **Create** →
+   **Start with Hello World!** → **Deploy**
+2. **Edit code** → выделить всё в редакторе и вставить содержимое
+   `worker/src/index.js` из этого репозитория → **Deploy**
+3. **Settings** → **Variables and Secrets**:
+   - *Secret*: `ANTHROPIC_API_KEY` — ключ из консоли Anthropic
+   - *Text*: `FIREBASE_PROJECT_ID` = `money-78d6d`
+   - *Text*: `MODEL` = `claude-haiku-4-5-20251001`
+   - *Text*: `DAILY_LIMIT` = `60`
+
+   Этот шаг обязателен: при публикации из браузера `wrangler.toml` не
+   читается, и переменные оттуда сами не появятся.
+4. Адрес воркера написан на его странице, в разделе **Domains & Routes**.
+
 ## Подключение к приложению
 
 Адрес не секретный, но в коде его нет — он приходит при сборке. Заведите
