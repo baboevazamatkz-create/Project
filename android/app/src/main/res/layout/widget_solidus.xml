@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Two rows: an expense line with its category, and an income line.
+     Both rows carry layout_weight, so the widget grows with whatever the
+     user drags it to rather than leaving a band of empty panel. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_panel"
+    android:padding="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
+
+        <TextView
+            android:id="@+id/w_expense_amount"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@drawable/widget_field"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:text="@string/w_amount_hint"
+            android:textColor="@color/w_ink_faint"
+            android:textSize="15sp"
+            android:contentDescription="@string/w_expense_action" />
+
+        <TextView
+            android:id="@+id/w_category"
+            android:layout_width="88dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/widget_chip"
+            android:gravity="center"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textColor="@color/w_gold"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/w_add_expense"
+            android:layout_width="52dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/widget_button_expense"
+            android:gravity="center"
+            android:text="@string/w_minus"
+            android:textColor="@color/w_on_button"
+            android:textSize="22sp"
+            android:contentDescription="@string/w_expense_action" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
+
+        <TextView
+            android:id="@+id/w_income_amount"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@drawable/widget_field"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:text="@string/w_amount_hint"
+            android:textColor="@color/w_ink_faint"
+            android:textSize="15sp"
+            android:contentDescription="@string/w_income_action" />
+
+        <TextView
+            android:id="@+id/w_add_income"
+            android:layout_width="52dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/widget_button_income"
+            android:gravity="center"
+            android:text="@string/w_plus"
+            android:textColor="@color/w_on_button"
+            android:textSize="22sp"
+            android:contentDescription="@string/w_income_action" />
+    </LinearLayout>
+</LinearLayout>

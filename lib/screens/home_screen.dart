@@ -6,10 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
 
 import '../data/expense_repository.dart';
+import '../data/widget_launch.dart';
 import '../data/household_settings_repository.dart';
 import '../models/category_group.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
+import '../models/expense_category.dart';
 import '../models/household.dart';
 import '../models/transaction_type.dart';
 import '../widgets/add_expense_sheet.dart';
@@ -139,7 +141,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  // Armed on launch and on every resume; disarmed once the tap behind it
+  // has been read. Without it a resume for any other reason would reopen
+  // the sheet.
+  bool _widgetCheckArmed = true;
+  AppCurrency? _lastCurrency;
+
   // Bumped when the tour changed: anyone who had seen the old five steps
   // would otherwise never be shown the four controls added since.
   static const _tourSeenKey = 'onboarding_tour_seen_v2';
@@ -196,6 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _subscribeToHousehold();
     ShowcaseView.register(
       onFinish: _markTourSeen,
@@ -203,6 +212,14 @@ class _HomeScreenState extends State<HomeScreen> {
       skipIfTargetNotPresent: true,
       blurValue: 2,
     );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    _widgetCheckArmed = true;
+    final currency = _lastCurrency;
+    if (currency != null) _maybeHandleWidgetLaunch(currency);
   }
 
   @override
@@ -215,6 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _listController.dispose();
     ShowcaseView.get().unregister();
     super.dispose();
@@ -403,6 +421,7 @@ class _HomeScreenState extends State<HomeScreen> {
     TransactionType type,
     AppCurrency currency, {
     Expense? existing,
+    ExpenseCategory? initialCategory,
   }) {
     showModalBottomSheet(
       context: context,
@@ -413,9 +432,32 @@ class _HomeScreenState extends State<HomeScreen> {
           type: type,
           currency: currency,
           existing: existing,
+          initialCategory: initialCategory,
           onSubmit: _addExpense,
         ),
       ),
+    );
+  }
+
+  /// Opens the sheet the home-screen widget asked for.
+  ///
+  /// The check is armed on launch and again on every resume, but it only
+  /// runs once the currency stream has delivered -- on a cold start the
+  /// first frame arrives before it does, and consuming the tap then would
+  /// throw it away with nothing to open.
+  void _maybeHandleWidgetLaunch(AppCurrency currency) {
+    if (!_widgetCheckArmed) return;
+    _widgetCheckArmed = false;
+    _consumeWidgetLaunch(currency);
+  }
+
+  Future<void> _consumeWidgetLaunch(AppCurrency currency) async {
+    final launch = await WidgetLaunchChannel.consume();
+    if (launch == null || !mounted) return;
+    _openAddSheet(
+      launch.type,
+      currency,
+      initialCategory: launch.category,
     );
   }
 
@@ -789,6 +831,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         from: currency, to: displayCurrency),
                   )
                 : totals;
+            _lastCurrency = currency;
+            _maybeHandleWidgetLaunch(currency);
             _maybeStartTour(hasContent: snapshot.hasData);
             return Scaffold(
               // The list runs under the app bar so there is something for
