@@ -933,7 +933,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                     if (snapshot.hasData)
-                      Positioned(left: 22, bottom: 26, child: _clearButton()),
+                      Positioned(left: 22, bottom: 16, child: _clearButton()),
                   ],
                 ),
               ),
