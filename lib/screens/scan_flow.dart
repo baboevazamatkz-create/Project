@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -48,10 +47,24 @@ class ScanFlow {
     }
     if (raw.isEmpty || !context.mounted) return;
 
-    final images =
-        raw.take(ScanService.maxImages).map(prepareScanImage).toList();
-
     _showProgress(context);
+
+    // Cutting and re-encoding takes long enough to drop frames, and the
+    // spinner is already on screen -- so it happens off the thread that
+    // draws. Each snapshot gets an equal share of the tile budget, so one
+    // long screenshot cannot use it all and leave the next with none.
+    final share = (kScanMaxTiles / raw.length).floor().clamp(1, kScanMaxTiles);
+    final images = <ScanImage>[];
+    for (final bytes in raw) {
+      images.addAll(
+        await compute(prepareScanImages, (bytes: bytes, maxTiles: share)),
+      );
+      if (images.length >= kScanMaxTiles) break;
+    }
+    if (images.length > kScanMaxTiles) {
+      images.removeRange(kScanMaxTiles, images.length);
+    }
+    if (!context.mounted) return;
     ScanResult result;
     try {
       result = await service.scan(images: images, currency: currency);
@@ -123,7 +136,7 @@ class ScanFlow {
                   title: const Text('Выбрать из галереи'),
                   subtitle: const Text(
                     'Чек или скриншот из банка, до '
-                    '${ScanService.maxImages} снимков сразу',
+                    '$kMaxScanSnapshots снимков сразу',
                   ),
                   onTap: () => Navigator.of(context).pop(ScanSource.gallery),
                 ),
@@ -177,26 +190,32 @@ class ScanFlow {
   }
 }
 
-/// The real picker. Resizing is asked of the platform first -- it does it
-/// natively, on a full-resolution photo, far faster than Dart can.
+/// The real picker.
+///
+/// Width is capped and height deliberately is not. Capping both is what
+/// ruins a statement: it fits a tall screenshot into a square and the
+/// columns collapse to nothing. Narrowing to the tile width costs no
+/// detail, and the platform's own resizer does it far faster than Dart.
 Future<List<Uint8List>> pickScanImages(ScanSource source) async {
   final picker = ImagePicker();
   if (source == ScanSource.camera) {
     final file = await picker.pickImage(
       source: ImageSource.camera,
-      maxWidth: kScanMaxEdge.toDouble(),
-      maxHeight: kScanMaxEdge.toDouble(),
-      imageQuality: 85,
+      maxWidth: kScanTileWidth.toDouble(),
+      imageQuality: 90,
     );
     return file == null ? const [] : [await file.readAsBytes()];
   }
   final files = await picker.pickMultiImage(
-    limit: ScanService.maxImages,
-    maxWidth: kScanMaxEdge.toDouble(),
-    maxHeight: kScanMaxEdge.toDouble(),
-    imageQuality: 85,
+    limit: kMaxScanSnapshots,
+    maxWidth: kScanTileWidth.toDouble(),
+    imageQuality: 90,
   );
   return Future.wait(
-    files.take(ScanService.maxImages).map((f) => f.readAsBytes()),
+    files.take(kMaxScanSnapshots).map((f) => f.readAsBytes()),
   );
 }
+
+/// How many snapshots may be picked at once. Each becomes one to three
+/// tiles, so this sits below the tile ceiling.
+const int kMaxScanSnapshots = 4;

@@ -17,7 +17,7 @@ const JWK_URL =
 // четыре мегабайта -- это заведомо выше потолка и заведомо ниже того,
 // что модель принимает.
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-const MAX_IMAGES = 4;
+const MAX_IMAGES = 12;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 
 // Совпадает с ExpenseCategory в приложении. Всё, что модель вернёт
@@ -228,25 +228,51 @@ function systemPrompt(today, currency) {
     '',
     `Сегодня ${today}. Валюта бюджета по умолчанию: ${currency}.`,
     '',
-    'Правила:',
-    '- С чека берите ОДНУ операцию на весь чек -- итоговую сумму, а не ',
-    '  отдельные товары. Итог -- это «Итого», «К оплате», «Всего».',
-    '- Со скриншота истории операций берите КАЖДУЮ видимую строку ',
-    '  отдельной операцией, сверху вниз, в том же порядке.',
-    '- Не берите строки, которые не являются операцией: остаток по счёту, ',
-    '  доступный лимит, кэшбэк-баллы, итоги за месяц, отменённые и ',
-    '  отклонённые платежи.',
-    '- Сумму возвращайте положительным числом; направление задаёт поле type.',
-    '- Если суммы на снимке нет вовсе, верните пустой список.',
-    '- Ничего не выдумывайте: пишите только то, что действительно видно.',
+    'Снимков может быть несколько. Это либо разные документы, либо, чаще, ',
+    'последовательные куски одного длинного скриншота, идущие сверху вниз ',
+    'и НАМЕРЕННО перекрывающиеся: несколько строк в конце одного куска ',
+    'повторяются в начале следующего. Такую повторённую строку запишите ',
+    'ОДИН раз.',
+    '',
+    'Чек:',
+    '- Одна операция на весь чек -- итоговая сумма, а не отдельные товары. ',
+    '  Итог -- это «Итого», «К оплате», «Всего».',
+    '',
+    'Выписка или история операций (обычно таблица: дата, сумма, тип ',
+    'операции, описание):',
+    '- Каждая строка -- отдельная операция, сверху вниз, в том же порядке.',
+    '- Направление задаёт ЗНАК суммы, а не слово в колонке типа. Минус -- ',
+    '  расход, плюс -- доход. Строка «Покупка + 7 605,00» -- это возврат, ',
+    '  то есть доход.',
+    '- Даты вида 08.09.26 -- это ДД.ММ.ГГ, то есть 2026-09-08.',
+    '- Продолжение строки снизу -- сумма в скобках в другой валюте, ',
+    '  «Курсовая разница», часы или пометка «Сумма заблокирована» -- ',
+    '  относится к строке НАД ним и отдельной операцией не является. ',
+    '  Заблокированная операция уже произошла: записывайте её как обычную.',
+    '- Две одинаковые строки подряд с одной датой, суммой и описанием -- ',
+    '  это две разные операции. Запишите обе.',
+    '- В описание берите название продавца или получателя как есть: ',
+    '  «Magnum Cash&Carry», «YANDEX.GO», «Magomed K.».',
+    '',
+    'Не берите строки, которые операцией не являются: остаток и доступный ',
+    'лимит по счёту, кэшбэк-баллы, итоги и обороты за период, заголовки ',
+    'таблицы, реквизиты банка, отменённые и отклонённые платежи.',
+    '',
+    'Сумму всегда возвращайте положительным числом -- направление задаёт ',
+    'поле type. Если операций на снимке нет вовсе, верните пустой список. ',
+    'Ничего не выдумывайте: пишите только то, что действительно видно.',
   ].join('\n');
 }
 
 function clampTransactions(raw, today, fallbackCurrency) {
   const out = [];
   for (const item of Array.isArray(raw) ? raw : []) {
-    const amount = Number(item?.amount);
-    if (!Number.isFinite(amount) || amount <= 0) continue;
+    // Absolute value rather than a rejection: a statement writes an
+    // expense as "- 1 920,00", and a model that faithfully carries that
+    // minus through would otherwise have every expense on the page
+    // silently dropped. Direction lives in `type`, never in the sign.
+    const amount = Math.abs(Number(item?.amount));
+    if (!Number.isFinite(amount) || amount === 0) continue;
 
     const date =
       typeof item?.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.date)
@@ -267,7 +293,7 @@ function clampTransactions(raw, today, fallbackCurrency) {
         ? Math.min(1, Math.max(0, confidence))
         : 1,
     });
-    if (out.length >= 40) break;
+    if (out.length >= 100) break;
   }
   return out;
 }
@@ -293,7 +319,7 @@ async function askModel(env, images, today, currency) {
     },
     body: JSON.stringify({
       model: env.MODEL || 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
+      max_tokens: 8192,
       system: systemPrompt(today, currency),
       tools: [TOOL],
       tool_choice: { type: 'tool', name: TOOL.name },
@@ -312,6 +338,18 @@ async function askModel(env, images, today, currency) {
   }
 
   const body = await res.json();
+
+  // A long statement can run past the answer budget. The tool call then
+  // arrives half-written and its arguments come back empty, which used to
+  // surface to the user as a cheerful "nothing found" -- the one answer
+  // that is certainly wrong when the page is full of operations.
+  if (body.stop_reason === 'max_tokens') {
+    throw new HttpError(
+      422,
+      'На снимке слишком много операций. Снимите выписку по частям',
+    );
+  }
+
   const block = (body.content || []).find((b) => b.type === 'tool_use');
   if (!block) throw new HttpError(502, 'Не удалось разобрать снимок');
   return block.input || {};
@@ -341,7 +379,7 @@ async function handleScan(request, env) {
     ? payload.images
     : [{ data: payload.image, mime: payload.mime }];
   if (rawImages.length === 0 || rawImages.length > MAX_IMAGES) {
-    throw new HttpError(400, `Нужно от одного до ${MAX_IMAGES} снимков`);
+    throw new HttpError(400, 'Слишком много снимков за раз');
   }
 
   const images = rawImages.map((image) => {

@@ -40,9 +40,10 @@ class ScanService {
 
   static bool get isConfigured => endpoint.isNotEmpty;
 
-  /// Beyond this the worker refuses the snapshot; the app never gets
-  /// close, since [prepareScanImage] resizes first.
-  static const maxImages = 4;
+  /// Beyond this the worker refuses the request. One long screenshot
+  /// becomes two or three tiles (see [prepareScanImages]), so this is a
+  /// ceiling on tiles rather than on snapshots picked.
+  static const maxImages = kScanMaxTiles;
 
   final http.Client _client;
   final Future<String?> Function() _token;
@@ -71,7 +72,7 @@ class ScanService {
       throw const ScanException('Сканер не настроен');
     }
     if (images.isEmpty || images.length > maxImages) {
-      throw const ScanException('Нужно от одного до $maxImages снимков');
+      throw const ScanException('Слишком много снимков за раз');
     }
 
     final token = await _token();
@@ -132,47 +133,81 @@ String _isoDate(DateTime value) => '${value.year.toString().padLeft(4, '0')}-'
     '${value.month.toString().padLeft(2, '0')}-'
     '${value.day.toString().padLeft(2, '0')}';
 
-/// What a model reads an image at. Past this, extra pixels cost tokens and
-/// upload time without making any digit easier to read.
-const int kScanMaxEdge = 1568;
-
-/// Below this a snapshot goes as it is: the picker has already resized it
-/// natively, and decoding a second time in Dart would cost a visible pause
-/// -- on the web it happens on the only thread there is.
-const int kScanPassThroughBytes = 500 * 1024;
-
-/// Brings a picked photo down to something worth uploading.
+/// How wide a snapshot is sent.
 ///
-/// Pure and synchronous so it can be tested without a picker: give it the
-/// bytes, get back what should be sent.
-ScanImage prepareScanImage(Uint8List raw) {
-  final mime = _sniffMime(raw);
-  if (mime != null && raw.length <= kScanPassThroughBytes) {
-    return ScanImage(bytes: raw, mime: mime);
-  }
+/// This is the number that decides whether a statement can be read at all.
+/// A model scales an image down to roughly 1.1 megapixels before looking
+/// at it, so a tall screenshot sent whole loses most of its width: a
+/// 1080x2400 phone screenshot fitted into that budget comes out about 700
+/// pixels wide, and a four-column table of small type stops being legible.
+/// Cutting the same screenshot into squarish tiles keeps every pixel of
+/// width instead.
+const int kScanTileWidth = 1100;
 
+/// The pixel budget one tile is allowed, just under what a model resizes
+/// at. Tile height follows from it: 1100 wide gives roughly 1000 tall.
+const int kScanTilePixels = 1100 * 1000;
+
+/// A tall snapshot is cut with this much of each tile repeated on the next
+/// one, so a table row is never sliced in half and lost. Rows that appear
+/// twice are the model's to reconcile -- the prompt says so.
+const double kScanTileOverlap = 0.12;
+
+/// The ceiling on tiles per pass, across every snapshot picked. Twelve
+/// tiles is around four full phone screenshots, which is more statement
+/// than anyone scans at once.
+const int kScanMaxTiles = 12;
+
+/// Cuts a picked snapshot into what should actually be uploaded.
+///
+/// Pure and synchronous so it can be tested without a picker, and small
+/// enough to hand to [compute]: decoding and re-encoding a screenshot
+/// takes long enough to drop frames on the thread that draws.
+List<ScanImage> prepareScanImages(({Uint8List bytes, int maxTiles}) input) {
+  final raw = input.bytes;
   final decoded = img.decodeImage(raw);
   if (decoded == null) {
     // Unreadable here does not mean unreadable by the model -- an exotic
     // but valid JPEG, say -- so send it on rather than refusing.
-    return ScanImage(bytes: raw, mime: mime ?? 'image/jpeg');
+    return [ScanImage(bytes: raw, mime: _sniffMime(raw) ?? 'image/jpeg')];
   }
 
-  final longest = math.max(decoded.width, decoded.height);
-  final resized = longest > kScanMaxEdge
+  final image = decoded.width > kScanTileWidth
       ? img.copyResize(
           decoded,
-          width: decoded.width >= decoded.height ? kScanMaxEdge : null,
-          height: decoded.height > decoded.width ? kScanMaxEdge : null,
+          width: kScanTileWidth,
           interpolation: img.Interpolation.average,
         )
       : decoded;
 
-  return ScanImage(
-    bytes: img.encodeJpg(resized, quality: 82),
-    mime: 'image/jpeg',
-  );
+  final tileHeight = kScanTilePixels ~/ image.width;
+  if (image.height <= tileHeight) {
+    return [_encode(image)];
+  }
+
+  final overlap = (tileHeight * kScanTileOverlap).round();
+  final step = tileHeight - overlap;
+  final tiles = <ScanImage>[];
+  for (var top = 0;
+      top < image.height && tiles.length < input.maxTiles;
+      top += step) {
+    final height = math.min(tileHeight, image.height - top);
+    // The last step can leave a sliver the previous tile's overlap already
+    // covered in full; another tile of it would only cost tokens.
+    if (tiles.isNotEmpty && height <= overlap) break;
+    tiles.add(_encode(
+      img.copyCrop(image, x: 0, y: top, width: image.width, height: height),
+    ));
+  }
+  return tiles;
 }
+
+ScanImage _encode(img.Image image) => ScanImage(
+      // 85 rather than the usual 80: the subject is small type, and the
+      // artefacts of a harder compression land exactly on the digits.
+      bytes: Uint8List.fromList(img.encodeJpg(image, quality: 85)),
+      mime: 'image/jpeg',
+    );
 
 String? _sniffMime(Uint8List bytes) {
   if (bytes.length >= 3 &&
