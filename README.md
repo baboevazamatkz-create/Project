@@ -47,7 +47,12 @@ flutter run --dart-define=SCAN_ENDPOINT=https://solidus-scan.<имя>.workers.de
 ```bash
 flutter build apk --release
 flutter build web --release --base-href /Project/
+flutter build appbundle --release   # то, что принимает Google Play
 ```
+
+Публикация в Play расписана по шагам в [`store/README.md`](store/README.md).
+Политика конфиденциальности:
+https://baboevazamatkz-create.github.io/Project/privacy.html
 
 ## Из чего состоит
 
@@ -57,4 +62,5 @@ flutter build web --release --base-href /Project/
 | `android/app/src/main/kotlin/.../SolidusWidgetProvider.kt` | виджет домашнего экрана |
 | `worker/` | посредник для сканера (Cloudflare Worker) |
 | `tool/generate_launcher_icon.py` | иконки и знак, генерируются, не рисуются руками |
+| `store/` | всё для публикации в Google Play: тексты карточки, ответы на анкеты, графика |
 | `test/` | тесты |

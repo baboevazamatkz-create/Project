@@ -30,16 +30,17 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // Permanent. Google Play keys every installed copy of the app on
+        // this string and will not let it change after the first upload:
+        // a different id is a different app, with its own listing, its own
+        // reviews and no way to update anyone who installed the old one.
         applicationId = "com.baboevazamatkz.expense_tracker"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
-        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
-        // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
-        // flag during build.
+        // From pubspec.yaml unless CI passes --build-number, which it does:
+        // Play refuses an upload whose version code is not higher than every
+        // code uploaded before, and a number tied to the build is the one
+        // thing that always rises.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -63,6 +64,34 @@ android {
             // so every build used to need an uninstall first.
             signingConfig =
                 signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+
+            // The Dart half of the app is compiled ahead of time and is not
+            // touched by any of this. The Java and Kotlin half is: the
+            // Firestore and Auth SDKs the home-screen widget needs are large,
+            // and without R8 every class in them ships whether or not
+            // anything calls it.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
+    }
+
+    // One .aab carries every architecture and Play hands each phone only the
+    // slice it can run, which is most of why the download is a third of the
+    // universal APK. Naming the dimensions explicitly rather than relying on
+    // the defaults, since the download size depends on them.
+    bundle {
+        abi { enableSplit = true }
+        density { enableSplit = true }
+        language {
+            // Off on purpose. Play would otherwise deliver only the system
+            // language's resources, and the app is Russian on a phone set to
+            // any language -- a Kazakh or English phone would come up with
+            // strings missing.
+            enableSplit = false
         }
     }
 }
