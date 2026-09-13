@@ -82,6 +82,13 @@ class _AppGateState extends State<AppGate> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Image.asset(
+                  'assets/brand_mark.png',
+                  width: 88,
+                  height: 88,
+                  filterQuality: FilterQuality.medium,
+                ),
+                const SizedBox(height: 18),
                 Text(
                   'ГДЕБАБЛО?',
                   style: microLabel(
