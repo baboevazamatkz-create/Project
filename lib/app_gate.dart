@@ -82,22 +82,22 @@ class _AppGateState extends State<AppGate> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Text(
+                  'SOLIDUS',
+                  style: microLabel(
+                    context,
+                    size: 12,
+                    color: goldFor(context).withValues(alpha: 0.9),
+                  ),
+                ),
+                const SizedBox(height: 18),
                 Image.asset(
                   'assets/brand_mark.png',
                   width: 88,
                   height: 88,
                   filterQuality: FilterQuality.medium,
                 ),
-                const SizedBox(height: 18),
-                Text(
-                  'SOLIDUS',
-                  style: microLabel(
-                    context,
-                    size: 11,
-                    color: goldFor(context).withValues(alpha: 0.9),
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 26),
                 SizedBox(
                   width: 22,
                   height: 22,
