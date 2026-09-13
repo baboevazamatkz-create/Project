@@ -75,8 +75,9 @@ class AddExpenseSheet extends StatefulWidget {
 /// Everything in this sheet is drawn at this fraction of its usual size.
 /// It is a single-purpose form and was taking far more of the screen than
 /// it needed to; one factor keeps every proportion intact instead of
-/// nudging a dozen figures apart from each other.
-const double _kScale = 1 / 1.5;
+/// nudging a dozen figures apart from each other. It went to 1/1.5 first,
+/// which read as too small, and then back up by 1.2.
+const double _kScale = 1.2 / 1.5;
 
 double _s(double value) => value * _kScale;
 
