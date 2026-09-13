@@ -232,7 +232,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                           FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                              'Общий бюджет\nна двоих',
+                              'Единый ритм\nмалых финансов',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: _t(30),
