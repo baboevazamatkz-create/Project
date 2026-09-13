@@ -9,6 +9,7 @@ import '../data/expense_repository.dart';
 import '../data/widget_bridge.dart';
 import '../data/widget_launch.dart';
 import '../data/household_settings_repository.dart';
+import '../data/scan_service.dart';
 import '../models/category_group.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
@@ -24,6 +25,7 @@ import '../widgets/household_switcher_sheet.dart';
 import '../theme.dart';
 import '../theme_mode_controller.dart';
 import '../widgets/summary_card.dart';
+import 'scan_flow.dart';
 import 'stats_screen.dart';
 
 final _monthDividerFormat = DateFormat('LLLL', 'ru');
@@ -150,14 +152,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   AppCurrency? _lastCurrency;
   String? _publishedHousehold;
 
-  // Bumped when the tour changed: anyone who had seen the old five steps
-  // would otherwise never be shown the four controls added since.
-  static const _tourSeenKey = 'onboarding_tour_seen_v2';
+  // Bumped whenever the tour changes: anyone who had seen the old steps
+  // would otherwise never be shown the controls added since. v3 added the
+  // scanner.
+  static const _tourSeenKey = 'onboarding_tour_seen_v3';
 
   final _repository = ExpenseRepository();
+  late final ScanFlow _scanFlow = ScanFlow();
+
+  /// The scanner needs an address to talk to, passed in at build time. With
+  /// none set there is nothing behind the button, so it is not shown at all
+  /// -- and the tour skips its step rather than pointing at a gap.
+  bool get _scanEnabled => ScanService.isConfigured;
   final _settingsRepository = HouseholdSettingsRepository();
 
   final _incomeFabKey = GlobalKey();
+  final _scanKey = GlobalKey();
   final _expenseFabKey = GlobalKey();
   final _summaryCardKey = GlobalKey();
   final _clearKey = GlobalKey();
@@ -304,6 +314,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _summaryCardKey,
         _expenseFabKey,
         _incomeFabKey,
+        if (_scanEnabled) _scanKey,
         _clearKey,
         _themeKey,
         _viewModeKey,
@@ -322,6 +333,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _addExpense(Expense expense) {
     return _repository.addExpense(widget.household.code, expense);
+  }
+
+  Future<void> _openScanner(
+    List<Expense> expenses,
+    AppCurrency currency,
+  ) async {
+    await _scanFlow.run(
+      context,
+      currency: currency,
+      existing: expenses,
+      onAdd: (added) async {
+        await _repository.addExpenses(widget.household.code, added);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+          ..removeCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(added.length == 1
+                  ? 'Запись добавлена'
+                  : 'Добавлено записей: ${added.length}'),
+            ),
+          );
+      },
+    );
   }
 
   Future<void> _deleteExpense(Expense expense) async {
@@ -976,6 +1011,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (_scanEnabled) ...[
+                            _tourStep(
+                              context,
+                              tourKey: _scanKey,
+                              title: 'Сканер чеков',
+                              description: 'Снимите чек или выберите скриншот '
+                                  'из банка — суммы, даты и категории '
+                                  'распознаются сами. Перед записью всё '
+                                  'можно проверить и поправить',
+                              child: FloatingActionButton.small(
+                                heroTag: 'scan_receipt',
+                                backgroundColor:
+                                    goldFor(context).withValues(alpha: 0.16),
+                                foregroundColor: goldFor(context),
+                                elevation: 0,
+                                onPressed: () =>
+                                    _openScanner(expenses, currency),
+                                tooltip: 'Распознать чек или скриншот',
+                                child: const Icon(
+                                  Icons.document_scanner_rounded,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
                           _tourStep(
                             context,
                             tourKey: _expenseFabKey,
