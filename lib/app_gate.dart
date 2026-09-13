@@ -90,7 +90,7 @@ class _AppGateState extends State<AppGate> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  'ГДЕБАБЛО?',
+                  'SOLIDUS',
                   style: microLabel(
                     context,
                     size: 11,
