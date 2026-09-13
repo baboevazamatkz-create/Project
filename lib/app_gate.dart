@@ -84,10 +84,10 @@ class _AppGateState extends State<AppGate> {
               children: [
                 Text(
                   'SOLIDUS',
-                  style: microLabel(
+                  style: wordmark(
                     context,
-                    size: 12,
-                    color: goldFor(context).withValues(alpha: 0.9),
+                    size: 15,
+                    color: goldFor(context).withValues(alpha: 0.92),
                   ),
                 ),
                 const SizedBox(height: 18),

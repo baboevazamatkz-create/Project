@@ -825,6 +825,23 @@ void main() {
         reason: 'the default must give way to what was handed in');
   });
 
+  testWidgets('The wordmark is the one thing not set in the interface face',
+      (tester) async {
+    late TextStyle style;
+    await tester.pumpWidget(MaterialApp(
+      theme: buildAppTheme(Brightness.light),
+      home: Builder(builder: (context) {
+        style = wordmark(context, size: 36);
+        return const SizedBox();
+      }),
+    ));
+    expect(style.fontFamily, 'PlayfairDisplay');
+    expect(style.fontWeight, FontWeight.w600);
+    // Tracking is a share of the size, so the wordmark keeps its rhythm at
+    // whichever of the two sizes it is drawn.
+    expect(style.letterSpacing, closeTo(36 * 0.12, 0.001));
+  });
+
   test('The reading width caps wide screens without pinching narrow ones', () {
     // A phone is narrower than the cap, so nothing about the current
     // layout changes; the cap only bites on tablets and desktop browsers.

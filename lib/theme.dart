@@ -159,6 +159,25 @@ TextStyle microLabel(BuildContext context,
       color: color ?? accentForeground(context).withValues(alpha: 0.58),
     );
 
+/// The wordmark, and nothing else.
+///
+/// A high-contrast serif where the whole interface is a sans: the name is
+/// the one place the app says who it is rather than what it is doing, and
+/// the shift in voice is what makes it read as a mark instead of a label.
+/// Semibold, because Playfair's regular goes thin at display sizes and its
+/// bold goes heavy.
+TextStyle wordmark(BuildContext context,
+        {required double size, Color? color}) =>
+    TextStyle(
+      fontFamily: 'PlayfairDisplay',
+      fontSize: size,
+      fontWeight: FontWeight.w600,
+      // Wide enough to space a short all-caps word, narrow enough that the
+      // serifs still group into a single shape.
+      letterSpacing: size * 0.12,
+      color: color ?? goldFor(context),
+    );
+
 /// Figures are always tabular: money that shifts sideways as the digits
 /// change is the detail that gives a finance app away.
 const List<FontFeature> kTabularFigures = [FontFeature.tabularFigures()];

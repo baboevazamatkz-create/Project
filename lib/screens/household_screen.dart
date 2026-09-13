@@ -28,8 +28,10 @@ class HouseholdScreen extends StatefulWidget {
 const double _kWordmarkScale = 3.0;
 
 /// The currency picker is the one control here people actually have to aim
-/// at, so it alone is drawn larger than the rest of the form.
-const double _kCurrencyScale = 1.5;
+/// at, so it alone is drawn larger than the rest of the form. It went to
+/// 1.5 first, which read as too big beside everything else, and back down
+/// by 1.2 from there.
+const double _kCurrencyScale = 1.5 / 1.2;
 
 double _c(double value) => value * _kCurrencyScale;
 
@@ -217,11 +219,11 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                           fit: BoxFit.scaleDown,
                           child: Text(
                             'SOLIDUS',
-                            style: microLabel(
+                            style: wordmark(
                               context,
                               size: 12 * _kWordmarkScale,
-                              color: goldFor(context).withValues(alpha: 0.9),
-                            ).copyWith(letterSpacing: 4),
+                              color: goldFor(context).withValues(alpha: 0.92),
+                            ),
                           ),
                         ),
                       ),
