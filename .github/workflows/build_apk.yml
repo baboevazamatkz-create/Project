@@ -8,6 +8,11 @@ on:
   # useful right after changing the signing secrets.
   workflow_dispatch:
 
+# Creating the release needs write access to the repository's contents;
+# the default token is read-only for everything not listed here.
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build APK
@@ -74,9 +79,44 @@ jobs:
             build/app/outputs/flutter-apk/app-release.apk \
             | grep -i 'SHA-256 digest' || true
 
+      # Kept alongside the release: an artifact is the only thing produced
+      # by a manual re-run that is not meant to become a version.
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+
+      # A release, unlike an artifact, never expires and needs no GitHub
+      # account to download -- this repository is public, so the asset URL
+      # is simply a file on the web. The asset is named without the version
+      # on purpose: that makes
+      #   .../releases/latest/download/Solidus.apk
+      # a permanent link to whatever the newest build is, which is the one
+      # worth bookmarking or sending to someone.
+      - name: Publish release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          tag="v${version}-${{ github.run_number }}"
+          cp build/app/outputs/flutter-apk/app-release.apk Solidus.apk
+
+          # Written to a file rather than passed inline, so the notes keep
+          # their own indentation instead of this block's.
+          {
+            git log -1 --pretty=%s
+            echo
+            echo "Скачайте Solidus.apk и откройте его на телефоне. Ставится поверх предыдущей версии, данные сохраняются."
+            echo
+            echo "Постоянная ссылка на последнюю версию:"
+            echo "https://github.com/${{ github.repository }}/releases/latest/download/Solidus.apk"
+          } > release-notes.md
+
+          gh release create "$tag" Solidus.apk \
+            --title "Solidus $version — сборка ${{ github.run_number }}" \
+            --notes-file release-notes.md \
+            --latest
