@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Two entry rows over a keypad. Everything is weighted rather than fixed,
-     so the widget is drawn at whatever size the user drags it to; the key
-     rows carry less weight than the entry rows, which keeps the keys from
-     turning into slabs when the widget is made tall. -->
+     so the widget is drawn at whatever size it is dragged to; the key rows
+     carry less weight than the entry rows, which keeps the keys from
+     turning into slabs when it is made tall. Drawn small on purpose: the
+     launcher can always stretch it, but it cannot shrink past what the
+     layout demands. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_panel"
-    android:padding="8dp">
+    android:padding="4dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -23,34 +25,34 @@
             android:layout_weight="1"
             android:background="@drawable/widget_field"
             android:gravity="center_vertical"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
+            android:paddingStart="7dp"
+            android:paddingEnd="7dp"
             android:singleLine="true"
             android:ellipsize="start"
             android:textColor="@color/w_ink"
-            android:textSize="17sp"
+            android:textSize="14sp"
             android:contentDescription="@string/w_expense_action" />
 
         <ImageView
             android:id="@+id/w_category"
-            android:layout_width="40dp"
+            android:layout_width="26dp"
             android:layout_height="match_parent"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_chip"
-            android:padding="9dp"
+            android:padding="5dp"
             android:scaleType="fitCenter"
             android:contentDescription="@string/w_category_action" />
 
         <TextView
             android:id="@+id/w_add_expense"
-            android:layout_width="36dp"
+            android:layout_width="24dp"
             android:layout_height="match_parent"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_button_expense"
             android:gravity="center"
             android:text="@string/w_minus"
             android:textColor="@color/w_on_button"
-            android:textSize="17sp"
+            android:textSize="14sp"
             android:contentDescription="@string/w_expense_action" />
     </LinearLayout>
 
@@ -58,7 +60,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="5dp"
+        android:layout_marginTop="3dp"
         android:orientation="horizontal"
         android:baselineAligned="false">
         <TextView
@@ -68,24 +70,24 @@
             android:layout_weight="1"
             android:background="@drawable/widget_field"
             android:gravity="center_vertical"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
+            android:paddingStart="7dp"
+            android:paddingEnd="7dp"
             android:singleLine="true"
             android:ellipsize="start"
             android:textColor="@color/w_ink"
-            android:textSize="17sp"
+            android:textSize="14sp"
             android:contentDescription="@string/w_income_action" />
 
         <TextView
             android:id="@+id/w_add_income"
-            android:layout_width="36dp"
+            android:layout_width="24dp"
             android:layout_height="match_parent"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_button_income"
             android:gravity="center"
             android:text="@string/w_plus"
             android:textColor="@color/w_on_button"
-            android:textSize="17sp"
+            android:textSize="14sp"
             android:contentDescription="@string/w_income_action" />
     </LinearLayout>
 
@@ -93,7 +95,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="0.78"
-        android:layout_marginTop="7dp"
+        android:layout_marginTop="4dp"
         android:orientation="horizontal"
         android:baselineAligned="false">
         <TextView
@@ -106,68 +108,68 @@
             android:gravity="center"
             android:text="1"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
         <TextView
             android:id="@+id/w_key_2"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
             android:text="2"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
         <TextView
             android:id="@+id/w_key_3"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
             android:text="3"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
         <TextView
             android:id="@+id/w_key_4"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
             android:text="4"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
         <TextView
             android:id="@+id/w_key_5"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
             android:text="5"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
         <TextView
             android:id="@+id/w_key_6"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
             android:text="6"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="0.78"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="2dp"
         android:orientation="horizontal"
         android:baselineAligned="false">
         <TextView
@@ -180,61 +182,61 @@
             android:gravity="center"
             android:text="7"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
         <TextView
             android:id="@+id/w_key_8"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
             android:text="8"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
         <TextView
             android:id="@+id/w_key_9"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
             android:text="9"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
         <TextView
             android:id="@+id/w_key_0"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
             android:text="0"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
         <TextView
             android:id="@+id/w_key_dot"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
             android:text="·"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
         <TextView
             android:id="@+id/w_key_del"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="2dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
             android:text="⌫"
             android:textColor="@color/w_ink"
-            android:textSize="17sp" />
+            android:textSize="13sp" />
     </LinearLayout>
 </LinearLayout>

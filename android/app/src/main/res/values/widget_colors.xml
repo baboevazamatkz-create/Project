@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The widget's own copy of the Ivory room. It is inflated by the launcher,
-     not by Flutter, so it cannot read lib/theme.dart — these are the same
-     values, kept in step by hand. values-night holds the Obsidian set. -->
+<!-- The widget is always the Obsidian room, whatever the phone's theme is
+     set to, and its panel is translucent so the wallpaper shows through.
+     It is inflated by the launcher rather than by Flutter, so it cannot
+     read lib/theme.dart; these are the same values kept in step by hand. -->
 <resources>
-    <color name="w_panel">#F6F2EA</color>
-    <color name="w_panel_edge">#141B1813</color>
-    <color name="w_field">#0D1B1813</color>
-    <color name="w_field_edge">#1F1B1813</color>
-    <color name="w_ink">#1B1813</color>
-    <color name="w_ink_faint">#8C1B1813</color>
-    <color name="w_gold">#9A7B44</color>
-    <color name="w_gold_fill">#1F9A7B44</color>
-    <color name="w_expense">#A4534A</color>
-    <color name="w_income">#44705B</color>
-    <color name="w_on_button">#F6F2EA</color>
+    <!-- ~80% obsidian: dark enough to hold ivory text over a bright
+         wallpaper, light enough to still read as glass over a dark one. -->
+    <color name="w_panel">#CC141318</color>
+    <color name="w_panel_edge">#26FFFFFF</color>
+    <color name="w_field">#1FFFFFFF</color>
+    <color name="w_field_edge">#2EFFFFFF</color>
+    <color name="w_ink">#F6F2EA</color>
+    <color name="w_ink_faint">#8CF6F2EA</color>
+    <color name="w_gold">#C8A86B</color>
+    <color name="w_gold_fill">#2EC8A86B</color>
+    <color name="w_expense">#C07D6C</color>
+    <color name="w_income">#6FA083</color>
+    <color name="w_on_button">#141318</color>
 </resources>
