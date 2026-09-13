@@ -7,6 +7,7 @@ import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/expense_category.dart';
 import '../theme.dart';
+import '../widgets/readable_width.dart';
 import '../widgets/app_background_pattern.dart';
 
 final _monthFormat = DateFormat('LLL', 'ru');
@@ -155,21 +156,23 @@ class _StatsScreenState extends State<StatsScreen>
         ),
       ),
       body: AppBackgroundPattern(
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            CategoriesTab(
-              entries: _categoryEntries,
-              currency: widget.currency,
-              budgetsStream: _budgetsStream,
-              onEditBudget: _editBudget,
-            ),
-            HistoryTab(
-              monthlyTotals: _monthlyTotals,
-              currency: widget.currency,
-              monthLabel: _monthLabel,
-            ),
-          ],
+        child: ReadableWidth(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              CategoriesTab(
+                entries: _categoryEntries,
+                currency: widget.currency,
+                budgetsStream: _budgetsStream,
+                onEditBudget: _editBudget,
+              ),
+              HistoryTab(
+                monthlyTotals: _monthlyTotals,
+                currency: widget.currency,
+                monthLabel: _monthLabel,
+              ),
+            ],
+          ),
         ),
       ),
     );

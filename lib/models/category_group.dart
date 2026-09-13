@@ -14,12 +14,19 @@ class CategoryGroup {
   final double total;
   final List<Expense> items;
 
+  /// Income's group, which the home screen recolours for the current
+  /// theme. [color] is fixed at build time and this function has no
+  /// BuildContext, so the light palette's green would otherwise be the
+  /// one drawn on Obsidian too.
+  final bool isIncome;
+
   const CategoryGroup({
     required this.label,
     required this.icon,
     required this.color,
     required this.total,
     required this.items,
+    this.isIncome = false,
   });
 }
 
@@ -65,6 +72,7 @@ List<CategoryGroup> buildCategoryGroups(
       color: kIncomeColor,
       total: _sumOf(incomeItems),
       items: incomeItems,
+      isIncome: true,
     ));
   }
 
