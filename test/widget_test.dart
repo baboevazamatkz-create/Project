@@ -99,7 +99,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Общий бюджет\nна двоих'), findsOneWidget);
+    expect(find.text('Единый ритм\nмалых финансов'), findsOneWidget);
     expect(find.text('Создать новый бюджет'), findsOneWidget);
     expect(find.text('Присоединиться по коду'), findsOneWidget);
   });
