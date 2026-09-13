@@ -153,14 +153,20 @@ def build_full_bleed(size, margin_ratio):
 
 
 def build_adaptive_foreground(size):
-    """The mark alone, inside the 66% an adaptive icon guarantees is visible.
+    """The mark alone, sized for an adaptive layer's mask.
 
-    Launchers crop an adaptive layer to any shape inside the middle 72 of
-    its 108 units, so the artwork is scaled to that safe circle and the rest
-    of the layer stays transparent -- the obsidian comes from the background
-    layer, which is a colour resource rather than a second PNG.
+    The 72-of-108 safe zone is a *square*, and every launcher mask -- circle,
+    squircle, rounded square -- is inscribed in it, so artwork that fills
+    that square to its edges gets its ends cut off. Filling it is exactly
+    what the first version did, and a launcher duly clipped the left end off
+    all three bars.
+
+    So the mark keeps the margin it has inside the legacy plate, measured
+    against the safe zone rather than the whole layer: it lands at the same
+    proportion of what the user actually sees, with room on every side for
+    the mask to take.
     """
-    inner = int(N * 72 / 108)
+    inner = int(N * (1 - 2 * MARK_MARGIN) * 72 / 108)
     art = _centre(build_mark(), 0.0).resize(
         (inner, inner), Image.LANCZOS, reducing_gap=3.0)
     out = _layer()
