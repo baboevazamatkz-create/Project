@@ -1,0 +1,26 @@
+# Cloudflare Worker: посредник между приложением и ИИ.
+#
+# Ключ Anthropic лежит только здесь (wrangler secret put ANTHROPIC_API_KEY)
+# и никогда не попадает ни в веб-сборку, ни в APK -- оба можно разобрать.
+#
+# Развёртывание и настройка: см. worker/README.md
+name = "solidus-scan"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+[vars]
+# Проект Firebase, чьи токены воркер согласен принимать. Должен совпадать
+# с projectId в lib/firebase_options.dart, иначе ни один вход не пройдёт.
+FIREBASE_PROJECT_ID = "money-78d6d"
+# Модель с поддержкой изображений.
+MODEL = "claude-haiku-4-5-20251001"
+# Сколько снимков один пользователь может разобрать за сутки. Работает
+# только если подключено хранилище SCAN_QUOTA (см. README).
+DAILY_LIMIT = "60"
+
+# Счётчик запросов по пользователям. Раскомментируйте после
+#   wrangler kv namespace create SCAN_QUOTA
+# и подставьте выданный id. Без него воркер работает, но без ограничения.
+# [[kv_namespaces]]
+# binding = "SCAN_QUOTA"
+# id = "сюда-id-из-команды-выше"

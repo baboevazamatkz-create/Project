@@ -61,8 +61,13 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      # SCAN_ENDPOINT: see the note in deploy_web.yml and worker/README.md.
       - name: Build release APK
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release \
+            --dart-define=SCAN_ENDPOINT="${SCAN_ENDPOINT}"
+        env:
+          SCAN_ENDPOINT: ${{ vars.SCAN_ENDPOINT }}
 
       # Printed so the signing certificate can be compared between runs: if
       # this digest ever changes, updates will stop installing over the
