@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Smaller again by about a third. The floor is what four rows of 13sp
-     text actually need: below it the digits start clipping, and a launcher
-     will happily let a widget be dragged there. Anything larger is the
-     user's own choice. -->
+<!-- Six rows now rather than four, since the keypad is a calculator. The
+     floor is what those rows need at 13sp; a launcher will happily let a
+     widget be dragged below what its layout can draw, and the digits would
+     start clipping. Anything larger is the user's own choice. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:initialLayout="@layout/widget_solidus"
     android:previewLayout="@layout/widget_solidus"
     android:description="@string/w_widget_description"
-    android:minWidth="150dp"
-    android:minHeight="120dp"
-    android:minResizeWidth="140dp"
-    android:minResizeHeight="110dp"
+    android:minWidth="140dp"
+    android:minHeight="170dp"
+    android:minResizeWidth="130dp"
+    android:minResizeHeight="160dp"
     android:maxResizeWidth="640dp"
-    android:maxResizeHeight="420dp"
+    android:maxResizeHeight="520dp"
     android:targetCellWidth="3"
-    android:targetCellHeight="2"
+    android:targetCellHeight="3"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen" />

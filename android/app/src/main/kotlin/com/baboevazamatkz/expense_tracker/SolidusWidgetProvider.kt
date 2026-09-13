@@ -80,11 +80,14 @@ class SolidusWidgetProvider : AppWidgetProvider() {
             R.drawable.w_cat_other,
         )
 
+        /** The label each key sends, against the view that sends it. */
         private val KEY_IDS = mapOf(
             "1" to R.id.w_key_1, "2" to R.id.w_key_2, "3" to R.id.w_key_3,
             "4" to R.id.w_key_4, "5" to R.id.w_key_5, "6" to R.id.w_key_6,
             "7" to R.id.w_key_7, "8" to R.id.w_key_8, "9" to R.id.w_key_9,
-            "0" to R.id.w_key_0, "." to R.id.w_key_dot, "<" to R.id.w_key_del,
+            "0" to R.id.w_key_0, "." to R.id.w_key_dot,
+            "<" to R.id.w_key_del, "C" to R.id.w_key_clear,
+            "000" to R.id.w_key_zeros,
         )
 
         private fun prefs(context: Context) =
@@ -269,9 +272,19 @@ class SolidusWidgetProvider : AppWidgetProvider() {
         private fun appendKey(context: Context, type: String, label: String) {
             val current = amount(context, type)
             val next = when {
+                label == "C" -> ""
                 label == "<" -> current.dropLast(1)
-                label == "." -> if (current.contains('.') || current.isEmpty()) current
-                else "$current."
+                label == "." ->
+                    if (current.contains('.') || current.isEmpty()) current
+                    else "$current."
+                // Three zeros at once, which is what a sum is usually
+                // reached by. Nothing to multiply yet, or already a
+                // standalone zero, and it does nothing rather than
+                // producing "000".
+                label == "000" ->
+                    if (current.isEmpty() || current == "0") current
+                    else if (current.length + 3 > MAX_DIGITS) current
+                    else current + "000"
                 current.length >= MAX_DIGITS -> current
                 // A leading zero is only meaningful before a decimal point.
                 current == "0" -> label
