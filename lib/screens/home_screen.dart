@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
 
 import '../data/expense_repository.dart';
+import '../data/widget_bridge.dart';
 import '../data/widget_launch.dart';
 import '../data/household_settings_repository.dart';
 import '../models/category_group.dart';
@@ -147,6 +148,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // the sheet.
   bool _widgetCheckArmed = true;
   AppCurrency? _lastCurrency;
+  String? _publishedHousehold;
 
   // Bumped when the tour changed: anyone who had seen the old five steps
   // would otherwise never be shown the four controls added since.
@@ -436,6 +438,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           onSubmit: _addExpense,
         ),
       ),
+    );
+  }
+
+  /// Tells the widget which budget and currency to record into.
+  ///
+  /// Written whenever either changes rather than on every build: this runs
+  /// inside build, and a preferences write per frame would be absurd.
+  void _publishToWidget(AppCurrency currency) {
+    if (_lastCurrency == currency &&
+        _publishedHousehold == widget.household.code) {
+      return;
+    }
+    _lastCurrency = currency;
+    _publishedHousehold = widget.household.code;
+    WidgetBridge.publish(
+      householdCode: widget.household.code,
+      currency: currency,
     );
   }
 
@@ -831,7 +850,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         from: currency, to: displayCurrency),
                   )
                 : totals;
-            _lastCurrency = currency;
+            _publishToWidget(currency);
             _maybeHandleWidgetLaunch(currency);
             _maybeStartTour(hasContent: snapshot.hasData);
             return Scaffold(

@@ -35,6 +35,9 @@
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.baboevazamatkz.expense_tracker.WIDGET_CYCLE" />
+                <action android:name="com.baboevazamatkz.expense_tracker.WIDGET_KEY" />
+                <action android:name="com.baboevazamatkz.expense_tracker.WIDGET_FOCUS" />
+                <action android:name="com.baboevazamatkz.expense_tracker.WIDGET_COMMIT" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
