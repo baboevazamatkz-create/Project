@@ -104,6 +104,25 @@ void main() {
     expect(find.text('Присоединиться по коду'), findsOneWidget);
   });
 
+  testWidgets('The brand stands on both ways into the budget screen',
+      (tester) async {
+    // canCancel is the difference between the first run and "add another
+    // budget" from the switcher. The wordmark was moved out of the
+    // first-run-only block and the line under it was left behind, so the
+    // second path showed a name with nothing beneath it -- which is most
+    // of the time, since it is the path anyone with a budget takes.
+    for (final canCancel in [false, true]) {
+      await tester.pumpWidget(MaterialApp(
+        home: HouseholdScreen(canCancel: canCancel, onReady: (_) {}),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('SOLIDUS'), findsOneWidget,
+          reason: 'wordmark missing with canCancel: $canCancel');
+      expect(find.text('Единый ритм\nмалых финансов'), findsOneWidget,
+          reason: 'tagline missing with canCancel: $canCancel');
+    }
+  });
+
   testWidgets('A faded list keeps its scroll position while it scrolls',
       (tester) async {
     // The fade used to be added and removed around the scroll view as the
