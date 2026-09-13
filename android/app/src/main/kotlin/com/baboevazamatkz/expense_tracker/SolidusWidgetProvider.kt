@@ -7,6 +7,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.widget.RemoteViews
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -67,6 +69,17 @@ class SolidusWidgetProvider : AppWidgetProvider() {
             "Здоровье", "Покупки", "Другое",
         )
 
+        /** The same glyphs ExpenseCategory carries inside the app. */
+        private val CATEGORY_ICONS = listOf(
+            R.drawable.w_cat_food,
+            R.drawable.w_cat_transport,
+            R.drawable.w_cat_housing,
+            R.drawable.w_cat_entertainment,
+            R.drawable.w_cat_health,
+            R.drawable.w_cat_shopping,
+            R.drawable.w_cat_other,
+        )
+
         private val KEY_IDS = mapOf(
             "1" to R.id.w_key_1, "2" to R.id.w_key_2, "3" to R.id.w_key_3,
             "4" to R.id.w_key_4, "5" to R.id.w_key_5, "6" to R.id.w_key_6,
@@ -101,20 +114,34 @@ class SolidusWidgetProvider : AppWidgetProvider() {
         private fun amount(context: Context, type: String): String =
             prefs(context).getString(amountKey(type), "") ?: ""
 
-        fun redrawAll(context: Context) {
+        fun redrawAll(context: Context, flash: String? = null) {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(
                 ComponentName(context, SolidusWidgetProvider::class.java)
             )
-            for (id in ids) render(context, manager, id)
+            for (id in ids) render(context, manager, id, flash)
         }
 
-        private fun render(context: Context, manager: AppWidgetManager, widgetId: Int) {
+        private fun render(
+            context: Context,
+            manager: AppWidgetManager,
+            widgetId: Int,
+            flash: String? = null,
+        ) {
             val views = RemoteViews(context.packageName, R.layout.widget_solidus)
             val focused = focus(context)
             val ready = householdCode(context) != null
 
-            views.setTextViewText(R.id.w_category, CATEGORY_LABELS[categoryIndex(context)])
+            val category = categoryIndex(context)
+            views.setImageViewResource(R.id.w_category, CATEGORY_ICONS[category])
+            views.setInt(
+                R.id.w_category,
+                "setColorFilter",
+                context.getColor(R.color.w_gold),
+            )
+            // The label is gone from the face of the chip, so it carries the
+            // name for anyone reading the screen aloud.
+            views.setContentDescription(R.id.w_category, CATEGORY_LABELS[category])
 
             for (type in listOf(TYPE_EXPENSE, TYPE_INCOME)) {
                 val id = if (type == TYPE_EXPENSE) R.id.w_expense_amount
@@ -147,6 +174,22 @@ class SolidusWidgetProvider : AppWidgetProvider() {
                 )
             }
 
+            // After a record the button wears a check for a second, which is
+            // the only acknowledgement a widget can give: it cannot raise a
+            // toast from the launcher's process, and the row it just wrote
+            // is not on screen here.
+            views.setTextViewText(
+                R.id.w_add_expense,
+                context.getString(
+                    if (flash == TYPE_EXPENSE) R.string.w_check else R.string.w_minus
+                ),
+            )
+            views.setTextViewText(
+                R.id.w_add_income,
+                context.getString(
+                    if (flash == TYPE_INCOME) R.string.w_check else R.string.w_plus
+                ),
+            )
             views.setOnClickPendingIntent(
                 R.id.w_add_expense,
                 broadcast(context, ACTION_COMMIT, TYPE_EXPENSE, mapOf(EXTRA_TYPE to TYPE_EXPENSE)),
@@ -215,7 +258,8 @@ class SolidusWidgetProvider : AppWidgetProvider() {
             prefs(context).edit().putString(amountKey(type), next).apply()
         }
 
-        private fun commit(context: Context, type: String) {
+        /** True when a record was written, which is what the check marks. */
+        private fun commit(context: Context, type: String): Boolean {
             val typed = amount(context, type)
             val value = typed.toDoubleOrNull()
             val code = householdCode(context)
@@ -225,11 +269,11 @@ class SolidusWidgetProvider : AppWidgetProvider() {
                 // Nothing typed: fall back to the sheet, which is what the
                 // widget did before it had a keypad.
                 openApp(context, type).send()
-                return
+                return false
             }
             if (code == null || user == null) {
                 openApp(context, type).send()
-                return
+                return false
             }
 
             val document = mutableMapOf<String, Any?>(
@@ -253,6 +297,7 @@ class SolidusWidgetProvider : AppWidgetProvider() {
                 .set(document)
 
             prefs(context).edit().putString(amountKey(type), "").apply()
+            return true
         }
     }
 
@@ -293,11 +338,33 @@ class SolidusWidgetProvider : AppWidgetProvider() {
                     intent.getStringExtra(EXTRA_KEY) ?: return,
                 )
 
-            ACTION_COMMIT ->
-                commit(context, intent.getStringExtra(EXTRA_TYPE) ?: TYPE_EXPENSE)
+            ACTION_COMMIT -> {
+                val type = intent.getStringExtra(EXTRA_TYPE) ?: TYPE_EXPENSE
+                if (commit(context, type)) {
+                    flashCheck(context, type)
+                    return
+                }
+            }
 
             else -> return
         }
         redrawAll(context)
+    }
+
+    /**
+     * Draws the check, waits a second, then draws the button again.
+     *
+     * goAsync is what keeps the process alive across that second: a
+     * receiver is ordinarily allowed to die the moment onReceive returns,
+     * and the redraw would never happen. The budget is around ten seconds,
+     * so one is comfortably inside it.
+     */
+    private fun flashCheck(context: Context, type: String) {
+        redrawAll(context, flash = type)
+        val pending = goAsync()
+        Handler(Looper.getMainLooper()).postDelayed({
+            redrawAll(context)
+            pending.finish()
+        }, 1000L)
     }
 }
