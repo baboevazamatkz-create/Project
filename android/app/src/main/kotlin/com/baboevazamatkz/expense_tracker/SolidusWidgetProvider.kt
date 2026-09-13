@@ -114,6 +114,28 @@ class SolidusWidgetProvider : AppWidgetProvider() {
         private fun amount(context: Context, type: String): String =
             prefs(context).getString(amountKey(type), "") ?: ""
 
+        /**
+         * "1234567.5" -> "1 234 567.5".
+         *
+         * What is stored stays raw, so it still parses; only the face of the
+         * pill is grouped. The separator is a plain space, matching
+         * _groupThousands in lib/widgets/add_expense_sheet.dart -- a figure
+         * typed into the widget and the same figure typed into the sheet
+         * should not look like two different conventions.
+         */
+        fun grouped(raw: String): String {
+            if (raw.isEmpty()) return raw
+            val dot = raw.indexOf('.')
+            val whole = if (dot == -1) raw else raw.substring(0, dot)
+            val rest = if (dot == -1) "" else raw.substring(dot)
+            val out = StringBuilder()
+            for (i in whole.indices) {
+                if (i > 0 && (whole.length - i) % 3 == 0) out.append(' ')
+                out.append(whole[i])
+            }
+            return out.append(rest).toString()
+        }
+
         fun redrawAll(context: Context, flash: String? = null) {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(
@@ -150,7 +172,7 @@ class SolidusWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(
                     id,
                     when {
-                        typed.isNotEmpty() -> typed
+                        typed.isNotEmpty() -> grouped(typed)
                         ready -> context.getString(R.string.w_amount_hint)
                         else -> context.getString(R.string.w_no_budget)
                     },

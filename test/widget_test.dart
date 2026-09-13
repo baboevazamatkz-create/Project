@@ -902,6 +902,33 @@ void main() {
         ['expense', 'income']);
   });
 
+  testWidgets('Amounts are grouped in threes as they are typed',
+      (tester) async {
+    // The widget groups its own pill the same way, with the same plain
+    // space, so a figure does not look like two different conventions
+    // depending on where it was entered. See grouped() in
+    // SolidusWidgetProvider.kt.
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: AddExpenseSheet(
+          type: TransactionType.expense,
+          currency: AppCurrency.rub,
+          onSubmit: (_) {},
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, '1234567');
+    await tester.pump();
+    expect(find.text('1 234 567'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, '1234.5');
+    await tester.pump();
+    expect(find.text('1 234.5'), findsOneWidget,
+        reason: 'only the whole part is grouped');
+  });
+
   test('Every category has an icon the widget can draw', () {
     // The chip shows a glyph rather than a name now, and the widget draws
     // it from a vector in res/drawable. Adding a category to the enum
