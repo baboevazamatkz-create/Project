@@ -23,15 +23,15 @@ class HouseholdScreen extends StatefulWidget {
   State<HouseholdScreen> createState() => _HouseholdScreenState();
 }
 
-/// This screen reads at a size of its own: it is the first thing a new
-/// user meets and is read once rather than scanned daily, so its type runs
-/// [_kTextScale] larger than the rest of the app and the wordmark above it
-/// larger still. Two factors rather than a spray of figures, so the
-/// proportions hold if either is retuned.
-const double _kTextScale = 1.5;
+/// The wordmark carries the top of this screen, so it is set well above
+/// the body text rather than a shade above it.
 const double _kWordmarkScale = 3.0;
 
-double _t(double value) => value * _kTextScale;
+/// The currency picker is the one control here people actually have to aim
+/// at, so it alone is drawn larger than the rest of the form.
+const double _kCurrencyScale = 1.5;
+
+double _c(double value) => value * _kCurrencyScale;
 
 class _HouseholdScreenState extends State<HouseholdScreen> {
   final _labelController = TextEditingController();
@@ -197,177 +197,175 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
     return Scaffold(
       appBar:
           widget.canCancel ? AppBar(title: const Text('Новый бюджет')) : null,
-      body: _scaledTheme(
-        context,
-        child: AppBackgroundPattern(
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Center(
-                child: ReadableWidth(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // The wordmark is the brand, so it stands above the
-                        // form whether this is the first run or a second
-                        // budget opened from the switcher. Only the headline
-                        // under it belongs to the first run.
-                        Center(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              'SOLIDUS',
-                              style: microLabel(
-                                context,
-                                size: 12 * _kWordmarkScale,
-                                color: goldFor(context).withValues(alpha: 0.9),
-                              ).copyWith(letterSpacing: 4),
+      body: AppBackgroundPattern(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: ReadableWidth(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // The wordmark is the brand, so it stands above the
+                      // form whether this is the first run or a second
+                      // budget opened from the switcher. Only the headline
+                      // under it belongs to the first run.
+                      Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'SOLIDUS',
+                            style: microLabel(
+                              context,
+                              size: 12 * _kWordmarkScale,
+                              color: goldFor(context).withValues(alpha: 0.9),
+                            ).copyWith(letterSpacing: 4),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: widget.canCancel ? 28 : 20),
+                      if (!widget.canCancel) ...[
+                        // A step down from the 30 it used to be: under a
+                        // wordmark this size it is the second voice on the
+                        // screen, not the first.
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Единый ритм\nмалых финансов',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 30 / 1.3,
+                              height: 1.15,
+                              fontWeight: FontWeight.w300,
+                              letterSpacing: -0.8,
+                              color: accentForeground(context),
                             ),
                           ),
                         ),
-                        SizedBox(height: widget.canCancel ? 28 : 20),
-                        if (!widget.canCancel) ...[
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              'Единый ритм\nмалых финансов',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: _t(30),
-                                height: 1.15,
-                                fontWeight: FontWeight.w300,
-                                letterSpacing: -0.8,
-                                color: accentForeground(context),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: _t(12)),
-                        ],
-                        Text(
-                          'Создайте общий бюджет и поделитесь кодом, '
-                          'чтобы вести расходы вместе',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: _t(14),
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.color
-                                ?.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        SizedBox(height: _t(28)),
-                        Center(
-                          child: Text('ВАЛЮТА БЮДЖЕТА',
-                              style: microLabel(context, size: _t(10.5))),
-                        ),
-                        SizedBox(height: _t(10)),
-                        Center(
-                          child: _CurrencyPicker(
-                            selected: _selectedCurrency,
-                            onChanged: (currency) =>
-                                setState(() => _selectedCurrency = currency),
-                          ),
-                        ),
-                        SizedBox(height: _t(28)),
-                        TextField(
-                          controller: _labelController,
-                          textAlign: TextAlign.center,
-                          decoration: InputDecoration(
-                            hintText: 'Название бюджета (например, Семья)',
-                            errorText: _labelError,
-                          ),
-                          onChanged: (_) {
-                            if (_labelError != null) {
-                              setState(() => _labelError = null);
-                            }
-                          },
-                        ),
-                        SizedBox(height: _t(16)),
-                        SizedBox(
-                          height: _t(52),
-                          child: ElevatedButton.icon(
-                            onPressed: _busy ? null : _createHousehold,
-                            icon: Icon(Icons.add_circle_outline, size: _t(19)),
-                            // Shrinks rather than truncating: on a narrow
-                            // phone "Создать новый ..." drops the word that
-                            // says what is being created.
-                            label: const FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text('Создать новый бюджет', maxLines: 1),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: _t(24)),
-                        Row(
-                          children: [
-                            Expanded(
-                                child: Divider(color: hairlineColor(context))),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: _t(14)),
-                              child: Text('ИЛИ',
-                                  style: microLabel(context, size: _t(10))),
-                            ),
-                            Expanded(
-                                child: Divider(color: hairlineColor(context))),
-                          ],
-                        ),
-                        SizedBox(height: _t(24)),
-                        TextField(
-                          controller: _codeController,
-                          textAlign: TextAlign.center,
-                          textCapitalization: TextCapitalization.characters,
-                          inputFormatters: [UpperCaseTextFormatter()],
-                          style: TextStyle(
-                            fontSize: _t(19),
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: _t(4),
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'Код бюджета',
-                            // The field letterspaces its code digits; the hint is
-                            // a sentence and should not inherit that.
-                            hintStyle: Theme.of(context)
-                                .inputDecorationTheme
-                                .hintStyle
-                                ?.copyWith(
-                                    fontSize: _t(15), letterSpacing: 0.2),
-                            errorText: _codeError,
-                          ),
-                        ),
-                        SizedBox(height: _t(12)),
-                        SizedBox(
-                          height: _t(52),
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: accentForeground(context)
-                                  .withValues(alpha: 0.85),
-                              side: BorderSide(color: hairlineColor(context)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              textStyle: TextStyle(
-                                fontFamily: 'Onest',
-                                fontSize: _t(14),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            onPressed: _busy ? null : _joinHousehold,
-                            icon: Icon(Icons.group_add_rounded, size: _t(19)),
-                            // Shrinks rather than truncating: on a narrow
-                            // phone "Создать новый ..." drops the word that
-                            // says what is being created.
-                            label: const FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child:
-                                  Text('Присоединиться по коду', maxLines: 1),
-                            ),
-                          ),
-                        ),
+                        const SizedBox(height: 12),
                       ],
-                    ),
+                      Text(
+                        'Создайте общий бюджет и поделитесь кодом, '
+                        'чтобы вести расходы вместе',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.color
+                              ?.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Center(
+                        child:
+                            Text('ВАЛЮТА БЮДЖЕТА', style: microLabel(context)),
+                      ),
+                      const SizedBox(height: 10),
+                      Center(
+                        child: _CurrencyPicker(
+                          selected: _selectedCurrency,
+                          onChanged: (currency) =>
+                              setState(() => _selectedCurrency = currency),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      TextField(
+                        controller: _labelController,
+                        textAlign: TextAlign.center,
+                        decoration: InputDecoration(
+                          hintText: 'Название бюджета',
+                          errorText: _labelError,
+                        ),
+                        onChanged: (_) {
+                          if (_labelError != null) {
+                            setState(() => _labelError = null);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: _busy ? null : _createHousehold,
+                          icon: const Icon(Icons.add_circle_outline, size: 19),
+                          // Shrinks rather than truncating: on a narrow
+                          // phone "Создать новый ..." drops the word that
+                          // says what is being created.
+                          label: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Создать новый бюджет', maxLines: 1),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                              child: Divider(color: hairlineColor(context))),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: Text('ИЛИ',
+                                style: microLabel(context, size: 10)),
+                          ),
+                          Expanded(
+                              child: Divider(color: hairlineColor(context))),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      TextField(
+                        controller: _codeController,
+                        textAlign: TextAlign.center,
+                        textCapitalization: TextCapitalization.characters,
+                        inputFormatters: [UpperCaseTextFormatter()],
+                        style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 4,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Код бюджета',
+                          // The field letterspaces its code digits; the hint is
+                          // a sentence and should not inherit that.
+                          hintStyle: Theme.of(context)
+                              .inputDecorationTheme
+                              .hintStyle
+                              ?.copyWith(fontSize: 15, letterSpacing: 0.2),
+                          errorText: _codeError,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 52,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: accentForeground(context)
+                                .withValues(alpha: 0.85),
+                            side: BorderSide(color: hairlineColor(context)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            textStyle: const TextStyle(
+                              fontFamily: 'Onest',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onPressed: _busy ? null : _joinHousehold,
+                          icon: const Icon(Icons.group_add_rounded, size: 19),
+                          // Shrinks rather than truncating: on a narrow
+                          // phone "Создать новый ..." drops the word that
+                          // says what is being created.
+                          label: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Присоединиться по коду', maxLines: 1),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -377,38 +375,6 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
       ),
     );
   }
-}
-
-/// The fields and buttons on this screen take their metrics from the app
-/// theme, so scaling only the figures written above would grow the labels
-/// and leave the controls at their old height. This scales them to match,
-/// and stops at this screen.
-Widget _scaledTheme(BuildContext context, {required Widget child}) {
-  final theme = Theme.of(context);
-  final input = theme.inputDecorationTheme;
-  return Theme(
-    data: theme.copyWith(
-      inputDecorationTheme: input.copyWith(
-        contentPadding:
-            EdgeInsets.symmetric(horizontal: _t(16), vertical: _t(15)),
-        hintStyle:
-            (input.hintStyle ?? const TextStyle()).copyWith(fontSize: _t(15)),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: theme.elevatedButtonTheme.style?.copyWith(
-          textStyle: WidgetStatePropertyAll(
-            TextStyle(
-              fontFamily: 'Onest',
-              fontSize: _t(15),
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.1,
-            ),
-          ),
-        ),
-      ),
-    ),
-    child: child,
-  );
 }
 
 class UpperCaseTextFormatter extends TextInputFormatter {
@@ -435,10 +401,10 @@ class _CurrencyPicker extends StatelessWidget {
     return FittedBox(
       fit: BoxFit.scaleDown,
       child: Container(
-        padding: EdgeInsets.all(_t(4)),
+        padding: EdgeInsets.all(_c(4)),
         decoration: BoxDecoration(
           color: Theme.of(context).inputDecorationTheme.fillColor,
-          borderRadius: BorderRadius.circular(_t(14)),
+          borderRadius: BorderRadius.circular(_c(14)),
           border: Border.all(color: hairlineColor(context)),
         ),
         child: Row(
@@ -449,14 +415,14 @@ class _CurrencyPicker extends StatelessWidget {
               onTap: () => onChanged(currency),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                width: _t(64),
-                height: _t(40),
+                width: _c(64),
+                height: _c(40),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected
                       ? goldFor(context).withValues(alpha: 0.12)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(_t(10)),
+                  borderRadius: BorderRadius.circular(_c(10)),
                   border: isSelected
                       ? Border.all(
                           color: goldFor(context).withValues(alpha: 0.45))
@@ -472,7 +438,7 @@ class _CurrencyPicker extends StatelessWidget {
                         ? goldFor(context)
                         : accentForeground(context).withValues(alpha: 0.55),
                     fontWeight: FontWeight.w500,
-                    fontSize: _t(11),
+                    fontSize: _c(11),
                   ),
                 ),
               ),
