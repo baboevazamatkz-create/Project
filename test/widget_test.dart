@@ -796,6 +796,35 @@ void main() {
             'middle');
   });
 
+  testWidgets('The add sheet opens on the category it was handed',
+      (tester) async {
+    // What the home-screen widget's chip is for: it cannot record anything
+    // itself, so it passes the category through and the sheet opens already
+    // on it rather than on the default.
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: AddExpenseSheet(
+          type: TransactionType.expense,
+          currency: AppCurrency.rub,
+          initialCategory: ExpenseCategory.transport,
+          onSubmit: (_) {},
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    ChoiceChip chipFor(String label) => tester.widget<ChoiceChip>(
+          find.ancestor(
+            of: find.text(label),
+            matching: find.byType(ChoiceChip),
+          ),
+        );
+
+    expect(chipFor(ExpenseCategory.transport.label).selected, isTrue);
+    expect(chipFor(ExpenseCategory.food.label).selected, isFalse,
+        reason: 'the default must give way to what was handed in');
+  });
+
   test('The reading width caps wide screens without pinching narrow ones', () {
     // A phone is narrower than the cap, so nothing about the current
     // layout changes; the cap only bites on tablets and desktop browsers.

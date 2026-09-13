@@ -60,11 +60,17 @@ class AddExpenseSheet extends StatefulWidget {
   final Expense? existing;
   final void Function(Expense expense) onSubmit;
 
+  /// Which category to open on, when something outside the sheet already
+  /// knows -- the home-screen widget, whose chip the user set before
+  /// tapping. Ignored while editing, where the record's own category wins.
+  final ExpenseCategory? initialCategory;
+
   const AddExpenseSheet({
     super.key,
     required this.type,
     required this.currency,
     this.existing,
+    this.initialCategory,
     required this.onSubmit,
   });
 
@@ -93,6 +99,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
   @override
   void initState() {
     super.initState();
+    _selectedCategory = widget.initialCategory ?? ExpenseCategory.food;
     final existing = widget.existing;
     if (existing != null) {
       final rawAmount = existing.amount == existing.amount.roundToDouble()
