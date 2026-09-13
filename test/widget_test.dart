@@ -16,11 +16,13 @@ import 'package:expense_tracker/screens/home_screen.dart'
     show monthDividerLabel;
 import 'package:expense_tracker/screens/household_screen.dart';
 import 'package:expense_tracker/screens/stats_screen.dart';
+import 'package:expense_tracker/data/household_repository.dart';
 import 'package:expense_tracker/data/widget_bridge.dart';
 import 'package:expense_tracker/theme.dart';
 import 'package:expense_tracker/widgets/readable_width.dart';
 import 'package:expense_tracker/theme_mode_controller.dart';
 import 'package:expense_tracker/widgets/add_expense_sheet.dart';
+import 'package:expense_tracker/widgets/ai_scan_icon.dart';
 import 'package:expense_tracker/widgets/expense_tile.dart';
 import 'package:expense_tracker/widgets/glass.dart';
 import 'package:expense_tracker/widgets/currency_symbol_icon.dart';
@@ -226,6 +228,7 @@ void main() {
           },
           onSwitch: (_) {},
           onAddHousehold: () {},
+          onLeave: (_) {},
         ),
       ),
       size: _screenSizes['modern phone']!,
@@ -270,6 +273,7 @@ void main() {
           },
           onSwitch: (_) {},
           onAddHousehold: () {},
+          onLeave: (_) {},
         ),
       ),
       size: _screenSizes['modern phone']!,
@@ -350,9 +354,112 @@ void main() {
         },
         onSwitch: (_) {},
         onAddHousehold: () {},
+        onLeave: (_) {},
       ),
     ),
   );
+
+  testWidgets('A budget can be left, and the code is shown before it goes',
+      (tester) async {
+    String? left;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HouseholdSwitcherSheet(
+            households: const [
+              Household(code: 'ABCD2345', label: 'Казахстан'),
+              Household(code: 'EFGH6789', label: 'Работа'),
+            ],
+            activeCode: 'ABCD2345',
+            onSwitch: (_) {},
+            onAddHousehold: () {},
+            onLeave: (code) => left = code,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Выйти из бюджета'));
+    await tester.pumpAndSettle();
+
+    // The code is the only way back in, so it is put in front of the user
+    // at the moment they are about to lose it.
+    expect(find.text('EFGH6789'), findsWidgets);
+    expect(find.textContaining('Записи в нём останутся'), findsOneWidget);
+    // Two budgets, so nothing about being the last one.
+    expect(find.textContaining('единственный бюджет'), findsNothing);
+
+    await tester.tap(find.text('Отмена'));
+    await tester.pumpAndSettle();
+    expect(left, isNull);
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Выйти из бюджета'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Выйти'));
+    await tester.pumpAndSettle();
+    expect(left, 'EFGH6789');
+  });
+
+  testWidgets('Leaving the last budget says what happens next', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HouseholdSwitcherSheet(
+            households: const [Household(code: 'ABCD2345', label: 'Дом')],
+            activeCode: 'ABCD2345',
+            onSwitch: (_) {},
+            onAddHousehold: () {},
+            onLeave: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Выйти из бюджета'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('единственный бюджет'), findsOneWidget);
+  });
+
+  test('Leaving a budget forgets it here and nowhere else', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = HouseholdRepository();
+    await repository.saveHouseholds(const [
+      Household(code: 'ABCD2345', label: 'Дом'),
+      Household(code: 'EFGH6789', label: 'Работа'),
+    ]);
+    await repository.setActiveCode('EFGH6789');
+
+    await repository.removeHousehold('EFGH6789');
+
+    expect(
+      (await repository.loadHouseholds()).map((h) => h.code),
+      ['ABCD2345'],
+    );
+
+    // The active code is the gate's own pointer; left dangling it would
+    // send the app looking for a budget that is no longer in the list.
+    await repository.clearActiveCode();
+    expect(await repository.loadActiveCode(), isNull);
+  });
+
+  testWidgets('The scanner wears a mark that says what reads the snapshot',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: Center(child: AiScanIcon()))),
+    );
+
+    // A capture frame with a spark inside it: one glyph says "point this
+    // at something", the other says what happens next.
+    expect(find.byIcon(Icons.crop_free_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.auto_awesome_rounded), findsOneWidget);
+  });
 
   testAcrossScreens(
     'Add-budget screen lays out when opened from the switcher',

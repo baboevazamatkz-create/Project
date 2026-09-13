@@ -1,6 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 import '../data/budget_repository.dart';
 import '../models/currency.dart';
@@ -9,6 +11,7 @@ import '../models/expense_category.dart';
 import '../theme.dart';
 import '../widgets/readable_width.dart';
 import '../widgets/app_background_pattern.dart';
+import '../widgets/tour_step.dart';
 
 final _monthFormat = DateFormat('LLL', 'ru');
 
@@ -30,7 +33,22 @@ class StatsScreen extends StatefulWidget {
 
 class _StatsScreenState extends State<StatsScreen>
     with SingleTickerProviderStateMixin {
+  // Shown once, the first time someone opens this screen with something
+  // on it. A tappable category row is the only way to set a limit and
+  // nothing about the row says so.
+  static const _tourSeenKey = 'stats_tour_seen_v1';
+
+  // Its own scope, not the default one. Registering without a scope
+  // overwrites whatever is registered there -- the home screen's
+  // showcase, still mounted behind this route -- and unregistering on the
+  // way out would then leave that screen with none at all.
+  static const _tourScope = 'stats';
+
   final _budgetRepository = BudgetRepository();
+  final _limitKey = GlobalKey();
+  late final ShowcaseView _showcase;
+  bool _tourStarted = false;
+
   late final TabController _tabController;
 
   // Aggregated once here rather than per build: the expense list is a fixed
@@ -47,12 +65,49 @@ class _StatsScreenState extends State<StatsScreen>
     _budgetsStream = _budgetRepository.watchBudgets(widget.householdCode);
     _categoryEntries = _buildCategoryEntries();
     _monthlyTotals = _buildMonthlyTotals();
+    _showcase = ShowcaseView.register(
+      scope: _tourScope,
+      onFinish: _markTourSeen,
+      onDismiss: (_) => _markTourSeen(),
+      skipIfTargetNotPresent: true,
+      blurValue: 2,
+    );
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _showcase.unregister();
     super.dispose();
+  }
+
+  // Called from build, so the common path -- already started -- stays
+  // synchronous rather than allocating a Future on every frame.
+  void _maybeStartTour() {
+    if (_tourStarted || _categoryEntries.isEmpty) return;
+    _tourStarted = true;
+    _startTour();
+  }
+
+  Future<void> _startTour() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_tourSeenKey) ?? false) return;
+    // Two rendered frames before the target's position is captured, for
+    // the same reason as the home screen: the first frames still report
+    // provisional insets, and endOfFrame schedules the frame it waits on.
+    for (var i = 0; i < 2; i++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+    _showcase.startShowCase(
+      [_limitKey],
+      delay: const Duration(milliseconds: 250),
+    );
+  }
+
+  Future<void> _markTourSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_tourSeenKey, true);
   }
 
   List<MapEntry<ExpenseCategory, double>> _buildCategoryEntries() {
@@ -125,6 +180,7 @@ class _StatsScreenState extends State<StatsScreen>
 
   @override
   Widget build(BuildContext context) {
+    _maybeStartTour();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Статистика'),
@@ -165,6 +221,7 @@ class _StatsScreenState extends State<StatsScreen>
                 currency: widget.currency,
                 budgetsStream: _budgetsStream,
                 onEditBudget: _editBudget,
+                limitTourKey: _limitKey,
               ),
               HistoryTab(
                 monthlyTotals: _monthlyTotals,
@@ -185,12 +242,18 @@ class CategoriesTab extends StatelessWidget {
   final Stream<Map<String, double>> budgetsStream;
   final void Function(ExpenseCategory category, double? current) onEditBudget;
 
+  /// Attached to the first category row, which the tour points at. Null
+  /// where the tab is built outside a registered showcase -- in a test,
+  /// say -- so the rows are plain.
+  final GlobalKey? limitTourKey;
+
   const CategoriesTab({
     super.key,
     required this.entries,
     required this.currency,
     required this.budgetsStream,
     required this.onEditBudget,
+    this.limitTourKey,
   });
 
   @override
@@ -300,15 +363,31 @@ class CategoriesTab extends StatelessWidget {
               },
             ),
             const SizedBox(height: 28),
-            for (final entry in entries)
+            for (final entry in entries.asMap().entries)
               () {
-                final budget = BudgetRepository.budgetFor(budgets, entry.key);
-                return _CategoryRow(
-                  category: entry.key,
-                  amount: entry.value,
+                final category = entry.value.key;
+                final budget = BudgetRepository.budgetFor(budgets, category);
+                final row = _CategoryRow(
+                  category: category,
+                  amount: entry.value.value,
                   currency: currency,
                   budget: budget,
-                  onTap: () => onEditBudget(entry.key, budget),
+                  onTap: () => onEditBudget(category, budget),
+                );
+                final tourKey = limitTourKey;
+                if (entry.key != 0 || tourKey == null) return row;
+                return tourStep(
+                  context,
+                  tourKey: tourKey,
+                  title: 'Лимиты по категориям',
+                  description: 'Нажмите на категорию, чтобы задать лимит на '
+                      'месяц. Под строкой появится, сколько от него осталось, '
+                      'а перерасход подсветится',
+                  isLast: true,
+                  targetShapeBorder: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: row,
                 );
               }(),
           ],

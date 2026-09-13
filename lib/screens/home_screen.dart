@@ -17,6 +17,7 @@ import '../models/expense_category.dart';
 import '../models/household.dart';
 import '../models/transaction_type.dart';
 import '../widgets/add_expense_sheet.dart';
+import '../widgets/ai_scan_icon.dart';
 import '../widgets/app_background_pattern.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/glass.dart';
@@ -25,6 +26,7 @@ import '../widgets/household_switcher_sheet.dart';
 import '../theme.dart';
 import '../theme_mode_controller.dart';
 import '../widgets/summary_card.dart';
+import '../widgets/tour_step.dart';
 import 'scan_flow.dart';
 import 'stats_screen.dart';
 
@@ -40,96 +42,11 @@ String monthDividerLabel(DateTime date) {
   return date.year == DateTime.now().year ? month : '$month ${date.year}';
 }
 
-/// One step of the onboarding tour, dressed in the room it is shown in.
-///
-/// The tooltip used to be a white card with black text, which was fine
-/// against the old palette and wrong against both of the current ones --
-/// it glared on Obsidian and clashed with the paper on Ivory. It is the
-/// same surface the bottom sheets use now, with champagne titles, and its
-/// buttons are built per step from [context] rather than registered once:
-/// the theme can be flipped from this very screen, and colours captured at
-/// registration would have stayed behind.
-Showcase _tourStep(
-  BuildContext context, {
-  required GlobalKey tourKey,
-  required String title,
-  required String description,
-  required Widget child,
-  ShapeBorder targetShapeBorder = const CircleBorder(),
-  bool isLast = false,
-}) {
-  final ink = accentForeground(context);
-  final gold = goldFor(context);
-  return Showcase(
-    key: tourKey,
-    title: title,
-    titleTextStyle: TextStyle(
-      fontFamily: 'Onest',
-      fontSize: 15,
-      fontWeight: FontWeight.w600,
-      letterSpacing: -0.1,
-      color: gold,
-    ),
-    description: description,
-    descTextStyle: TextStyle(
-      fontFamily: 'Onest',
-      fontSize: 13,
-      height: 1.45,
-      fontWeight: FontWeight.w400,
-      color: ink.withValues(alpha: 0.72),
-    ),
-    tooltipBackgroundColor: sheetSurface(context),
-    overlayColor: _isDarkTheme(context) ? Colors.black : kAccentColor,
-    overlayOpacity: 0.62,
-    tooltipBorderRadius: BorderRadius.circular(18),
-    tooltipPadding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
-    targetShapeBorder: targetShapeBorder,
-    targetPadding: const EdgeInsets.all(4),
-    tooltipActionConfig: TooltipActionConfig(
-      position: TooltipActionPosition.inside,
-      alignment:
-          isLast ? MainAxisAlignment.end : MainAxisAlignment.spaceBetween,
-      gapBetweenContentAndAction: 12,
-    ),
-    tooltipActions: [
-      if (!isLast)
-        TooltipActionButton(
-          type: TooltipDefaultActionType.skip,
-          name: 'Пропустить',
-          backgroundColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          textStyle: TextStyle(
-            fontFamily: 'Onest',
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: ink.withValues(alpha: 0.5),
-          ),
-        ),
-      TooltipActionButton(
-        type: TooltipDefaultActionType.next,
-        name: isLast ? 'Готово' : 'Далее',
-        backgroundColor: gold,
-        borderRadius: BorderRadius.circular(10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        textStyle: const TextStyle(
-          fontFamily: 'Onest',
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFFF6F2EA),
-        ),
-      ),
-    ],
-    child: child,
-  );
-}
-
-bool _isDarkTheme(BuildContext context) =>
-    Theme.of(context).brightness == Brightness.dark;
-
 class HomeScreen extends StatefulWidget {
   final Household household;
   final List<Household> households;
   final ValueChanged<String> onSwitchHousehold;
+  final ValueChanged<String> onLeaveHousehold;
   final VoidCallback onAddHousehold;
 
   const HomeScreen({
@@ -137,6 +54,7 @@ class HomeScreen extends StatefulWidget {
     required this.household,
     required this.households,
     required this.onSwitchHousehold,
+    required this.onLeaveHousehold,
     required this.onAddHousehold,
   });
 
@@ -154,8 +72,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // Bumped whenever the tour changes: anyone who had seen the old steps
   // would otherwise never be shown the controls added since. v3 added the
-  // scanner.
-  static const _tourSeenKey = 'onboarding_tour_seen_v3';
+  // scanner, v4 the list row and the scanner's own wording.
+  static const _tourSeenKey = 'onboarding_tour_seen_v4';
 
   final _repository = ExpenseRepository();
   final _scanFlow = ScanFlow();
@@ -168,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   final _incomeFabKey = GlobalKey();
   final _scanKey = GlobalKey();
+  final _rowKey = GlobalKey();
   final _expenseFabKey = GlobalKey();
   final _summaryCardKey = GlobalKey();
   final _clearKey = GlobalKey();
@@ -177,6 +96,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _statsKey = GlobalKey();
   final _switcherKey = GlobalKey();
   bool _tourStarted = false;
+  late final ShowcaseView _showcase;
+
+  // Whether the list had a row to point the "hold to edit" step at when
+  // the tour began. On a brand-new budget it does not, and the step is
+  // left out rather than aimed at an empty list.
+  bool _tourHasRows = false;
 
   // Each budget's own currency, fetched once (not a live stream -- nothing
   // in the app changes a budget's currency after creation) the first time
@@ -218,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _subscribeToHousehold();
-    ShowcaseView.register(
+    _showcase = ShowcaseView.register(
       onFinish: _markTourSeen,
       onDismiss: (_) => _markTourSeen(),
       skipIfTargetNotPresent: true,
@@ -247,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _listController.dispose();
     _scanFlow.dispose();
-    ShowcaseView.get().unregister();
+    _showcase.unregister();
     super.dispose();
   }
 
@@ -283,9 +208,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // synchronous: an async method allocates a Future even when it returns on
   // its first line, and that would be one per frame for the life of the
   // screen.
-  void _maybeStartTour({required bool hasContent}) {
+  void _maybeStartTour({required bool hasContent, required bool hasRows}) {
     if (_tourStarted || !hasContent) return;
     _tourStarted = true;
+    _tourHasRows = hasRows;
     _startTour();
   }
 
@@ -310,9 +236,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Ordered the way the screen reads: what you are looking at, the two
     // things you do with it, the one destructive button, then the app bar
     // from left to right.
-    ShowcaseView.get().startShowCase(
+    _showcase.startShowCase(
       [
         _summaryCardKey,
+        if (_tourHasRows) _rowKey,
         _expenseFabKey,
         _incomeFabKey,
         if (_scanEnabled) _scanKey,
@@ -405,6 +332,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           currencies: _householdCurrencies,
           onSwitch: widget.onSwitchHousehold,
           onAddHousehold: widget.onAddHousehold,
+          onLeave: widget.onLeaveHousehold,
         ),
       ),
     );
@@ -888,7 +816,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 : totals;
             _publishToWidget(currency);
             _maybeHandleWidgetLaunch(currency);
-            _maybeStartTour(hasContent: snapshot.hasData);
+            _maybeStartTour(
+              hasContent: snapshot.hasData,
+              hasRows: expenses.isNotEmpty && !_groupedByCategory,
+            );
             return Scaffold(
               // The list runs under the app bar so there is something for
               // the bar's frosting to actually blur.
@@ -914,7 +845,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
                 titleSpacing: 24,
                 actions: [
-                  _tourStep(
+                  tourStep(
                     context,
                     tourKey: _themeKey,
                     title: 'Тема',
@@ -922,7 +853,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         'переживает перезапуск',
                     child: _themeToggleButton(),
                   ),
-                  _tourStep(
+                  tourStep(
                     context,
                     tourKey: _viewModeKey,
                     title: 'Список или категории',
@@ -930,7 +861,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         'месяца, собранные по категориям',
                     child: _viewModeToggle(),
                   ),
-                  _tourStep(
+                  tourStep(
                     context,
                     tourKey: _currencyKey,
                     title: 'Валюта',
@@ -939,7 +870,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         'записи остаются в валюте бюджета',
                     child: _currencyToggleButton(currency),
                   ),
-                  _tourStep(
+                  tourStep(
                     context,
                     tourKey: _statsKey,
                     title: 'Статистика',
@@ -951,7 +882,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       tooltip: 'По категориям',
                     ),
                   ),
-                  _tourStep(
+                  tourStep(
                     context,
                     tourKey: _switcherKey,
                     title: 'Мои бюджеты',
@@ -1000,7 +931,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       // An empty box still anchors spaceBetween, so the pair on
                       // the right keeps its place before the data arrives.
                       snapshot.hasData
-                          ? _tourStep(
+                          ? tourStep(
                               context,
                               tourKey: _clearKey,
                               title: 'Очистить бюджет',
@@ -1013,14 +944,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (_scanEnabled) ...[
-                            _tourStep(
+                            tourStep(
                               context,
                               tourKey: _scanKey,
-                              title: 'Сканер чеков',
+                              title: 'Сканер с искусственным интеллектом',
                               description: 'Снимите чек или выберите скриншот '
-                                  'из банка — суммы, даты и категории '
-                                  'распознаются сами. Перед записью всё '
-                                  'можно проверить и поправить',
+                                  'из банка — ИИ прочитает суммы, даты и '
+                                  'продавцов и сам разложит их по категориям. '
+                                  'Выписку разберёт целиком, строку за '
+                                  'строкой. Перед записью всё можно проверить '
+                                  'и поправить: лишнее снять, ошибку — '
+                                  'исправить',
                               child: FloatingActionButton.small(
                                 heroTag: 'scan_receipt',
                                 backgroundColor:
@@ -1029,16 +963,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 elevation: 0,
                                 onPressed: () =>
                                     _openScanner(expenses, currency),
-                                tooltip: 'Распознать чек или скриншот',
-                                child: const Icon(
-                                  Icons.document_scanner_rounded,
-                                  size: 20,
-                                ),
+                                tooltip: 'Распознать чек или скриншот — ИИ',
+                                child: const AiScanIcon(size: 20),
                               ),
                             ),
                             const SizedBox(height: 14),
                           ],
-                          _tourStep(
+                          tourStep(
                             context,
                             tourKey: _expenseFabKey,
                             title: 'Добавить расход',
@@ -1060,7 +991,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                           ),
                           const SizedBox(height: 14),
-                          _tourStep(
+                          tourStep(
                             context,
                             tourKey: _incomeFabKey,
                             title: 'Добавить доход',
@@ -1101,7 +1032,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 20,
                                 8,
                               ),
-                              child: _tourStep(
+                              child: tourStep(
                                 context,
                                 tourKey: _summaryCardKey,
                                 title: 'Итоги',
@@ -1169,13 +1100,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           itemCount: expenses.length,
                                           separatorBuilder: (context, index) =>
                                               _buildSeparator(expenses, index),
-                                          itemBuilder: (context, index) =>
-                                              _buildExpenseRow(
-                                            expenses[index],
-                                            currency: currency,
-                                            displayCurrency: displayCurrency,
-                                            isConverted: isConverted,
-                                          ),
+                                          itemBuilder: (context, index) {
+                                            final row = _buildExpenseRow(
+                                              expenses[index],
+                                              currency: currency,
+                                              displayCurrency: displayCurrency,
+                                              isConverted: isConverted,
+                                            );
+                                            // The tour points at the top
+                                            // row: the two gestures a row
+                                            // answers to are invisible
+                                            // until someone says so.
+                                            if (index != 0) return row;
+                                            return tourStep(
+                                              context,
+                                              tourKey: _rowKey,
+                                              title: 'Запись в списке',
+                                              description: 'Зажмите запись, '
+                                                  'чтобы изменить сумму, '
+                                                  'категорию, дату или '
+                                                  'заметку. Смахните влево — '
+                                                  'удалить, с возможностью '
+                                                  'отменить',
+                                              targetShapeBorder:
+                                                  RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: row,
+                                            );
+                                          },
                                         ),
                                       ),
                                   ],

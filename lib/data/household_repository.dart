@@ -55,6 +55,17 @@ class HouseholdRepository {
     await saveHouseholds([...households, household]);
   }
 
+  /// Drops a budget from this device's list.
+  ///
+  /// Local only: the budget itself lives in Firestore under its code and
+  /// stays exactly as it was for everyone else in it. Coming back is a
+  /// matter of joining by the same code again, which is why the code is
+  /// put in front of the user before they leave.
+  Future<void> removeHousehold(String code) async {
+    final households = await loadHouseholds();
+    await saveHouseholds(households.where((h) => h.code != code).toList());
+  }
+
   Future<String?> loadActiveCode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_activeCodeKey);
@@ -63,5 +74,13 @@ class HouseholdRepository {
   Future<void> setActiveCode(String code) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_activeCodeKey, code);
+  }
+
+  /// Forgets which budget was open, for when the last one has been left.
+  /// Leaving the key pointing at a budget that is gone would have the gate
+  /// look for it on every launch.
+  Future<void> clearActiveCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_activeCodeKey);
   }
 }

@@ -18,6 +18,10 @@ class HouseholdSwitcherSheet extends StatelessWidget {
   final ValueChanged<String> onSwitch;
   final VoidCallback onAddHousehold;
 
+  /// Drops a budget from this device. Local: the budget itself, and every
+  /// record in it, stays with the other people in it.
+  final ValueChanged<String> onLeave;
+
   /// Each budget's own currency, keyed by household code -- every row
   /// shows the symbol for *that* budget, chosen once when it was created,
   /// not whichever budget happens to be open right now. A code missing
@@ -30,6 +34,7 @@ class HouseholdSwitcherSheet extends StatelessWidget {
     required this.activeCode,
     required this.onSwitch,
     required this.onAddHousehold,
+    required this.onLeave,
     this.currencies = const {},
   });
 
@@ -81,12 +86,14 @@ class HouseholdSwitcherSheet extends StatelessWidget {
                   household: household,
                   isActive: household.code == activeCode,
                   currency: currencies[household.code] ?? AppCurrency.rub,
+                  isOnly: households.length == 1,
                   onTap: () {
                     Navigator.of(context).pop();
                     if (household.code != activeCode) {
                       onSwitch(household.code);
                     }
                   },
+                  onLeave: () => onLeave(household.code),
                 ),
               SizedBox(height: _s(12)),
               SizedBox(
@@ -131,14 +138,102 @@ class _HouseholdRow extends StatelessWidget {
   final Household household;
   final bool isActive;
   final AppCurrency currency;
+
+  /// Whether this is the last budget on the device, which changes what
+  /// leaving it means and so what the warning has to say.
+  final bool isOnly;
   final VoidCallback onTap;
+  final VoidCallback onLeave;
 
   const _HouseholdRow({
     required this.household,
     required this.isActive,
     required this.currency,
+    required this.isOnly,
     required this.onTap,
+    required this.onLeave,
   });
+
+  void _copyCode(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: household.code));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Код скопирован')),
+    );
+  }
+
+  Future<void> _confirmLeave(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Выйти из бюджета?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Бюджет «${household.label}» исчезнет из вашего списка. '
+              'Записи в нём останутся — вы просто перестанете их видеть, '
+              'а остальные участники ничего не заметят.',
+            ),
+            if (isOnly) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Это ваш единственный бюджет: после выхода приложение '
+                'предложит создать новый или войти по коду.',
+              ),
+            ],
+            const SizedBox(height: 18),
+            Text(
+              'ВЕРНУТЬСЯ МОЖНО ПО КОДУ',
+              style: microLabel(context, size: 10),
+            ),
+            const SizedBox(height: 6),
+            // The code is put in front of the user at the one moment they
+            // are about to lose their only way back to it.
+            Row(
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    household.code,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 2,
+                      color: goldFor(context),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _copyCode(context),
+                  color: goldFor(context),
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  tooltip: 'Скопировать код',
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: expenseColor(context),
+              foregroundColor: const Color(0xFFF6F2EA),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Выйти'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    Navigator.of(context).pop();
+    onLeave();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -226,19 +321,39 @@ class _HouseholdRow extends StatelessWidget {
                       child: Icon(Icons.check_circle_rounded,
                           color: goldFor(context), size: _s(20)),
                     ),
-                  IconButton(
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: household.code));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Код скопирован')),
-                      );
-                    },
+                  // Copying and leaving share one menu rather than sitting
+                  // as two more buttons: three controls on a row this
+                  // narrow left nothing for the budget's own name, and a
+                  // way out of a budget is not something to put one
+                  // mistaken tap away from the row you switch with.
+                  PopupMenuButton<_RowAction>(
+                    tooltip: 'Что сделать с бюджетом',
                     // Champagne rather than the default ink, so it sits
                     // below the active row's check in the sheet's
                     // hierarchy.
-                    color: goldFor(context).withValues(alpha: 0.7),
-                    icon: Icon(Icons.copy_rounded, size: _s(18)),
-                    tooltip: 'Скопировать код',
+                    iconColor: goldFor(context).withValues(alpha: 0.7),
+                    icon: Icon(Icons.more_vert_rounded, size: _s(20)),
+                    onSelected: (action) {
+                      switch (action) {
+                        case _RowAction.copy:
+                          _copyCode(context);
+                        case _RowAction.leave:
+                          _confirmLeave(context);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: _RowAction.copy,
+                        child: Text('Скопировать код'),
+                      ),
+                      PopupMenuItem(
+                        value: _RowAction.leave,
+                        child: Text(
+                          'Выйти из бюджета',
+                          style: TextStyle(color: expenseColor(context)),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -249,3 +364,5 @@ class _HouseholdRow extends StatelessWidget {
     );
   }
 }
+
+enum _RowAction { copy, leave }

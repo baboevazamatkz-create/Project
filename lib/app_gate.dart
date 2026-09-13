@@ -57,6 +57,27 @@ class _AppGateState extends State<AppGate> {
     setState(() => _activeCode = code);
   }
 
+  /// Leaves a budget: it goes from this device's list, and the next one
+  /// in the list takes over. Leaving the last one puts the gate back on
+  /// the screen that creates or joins one.
+  Future<void> _leaveHousehold(String code) async {
+    await _repository.removeHousehold(code);
+    final remaining = _households.where((h) => h.code != code).toList();
+    final nextCode = _activeCode == code
+        ? (remaining.isEmpty ? null : remaining.first.code)
+        : _activeCode;
+    if (nextCode == null) {
+      await _repository.clearActiveCode();
+    } else {
+      await _repository.setActiveCode(nextCode);
+    }
+    if (!mounted) return;
+    setState(() {
+      _households = remaining;
+      _activeCode = nextCode;
+    });
+  }
+
   void _openAddHouseholdFlow() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -122,6 +143,7 @@ class _AppGateState extends State<AppGate> {
       households: _households,
       onSwitchHousehold: _switchHousehold,
       onAddHousehold: _openAddHouseholdFlow,
+      onLeaveHousehold: _leaveHousehold,
     );
   }
 }
