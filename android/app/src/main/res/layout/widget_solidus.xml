@@ -1,16 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One grid of quarters, top to bottom. The chip and the two action
-     buttons take a quarter each, which is exactly what a key takes, so
-     every button in the widget is the same size without any of them being
-     given a fixed dp. The keypad is laid out the way a calculator is:
-     digits in three rows of three, and a fourth column for the three
-     things that edit rather than add. -->
+<!-- One grid of quarters. Five rows: the two entry rows, then the keypad
+     as three rows of digits with a fourth column for the keys that edit
+     rather than add. Nothing carries a fixed dp, so the whole thing is
+     drawn at whatever size it is dragged to. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_panel"
-    android:padding="9dp">
+    android:padding="7dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -25,8 +23,8 @@
             android:layout_weight="2"
             android:background="@drawable/widget_field"
             android:gravity="center_vertical"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
+            android:paddingStart="7dp"
+            android:paddingEnd="7dp"
             android:singleLine="true"
             android:ellipsize="start"
             android:textColor="@color/w_ink"
@@ -40,7 +38,7 @@
             android:layout_weight="1"
             android:layout_marginStart="4dp"
             android:background="@drawable/widget_chip"
-            android:padding="6dp"
+            android:padding="5dp"
             android:scaleType="fitCenter"
             android:contentDescription="@string/w_category_action" />
 
@@ -72,8 +70,8 @@
             android:layout_weight="3"
             android:background="@drawable/widget_field"
             android:gravity="center_vertical"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
+            android:paddingStart="7dp"
+            android:paddingEnd="7dp"
             android:singleLine="true"
             android:ellipsize="start"
             android:textColor="@color/w_ink"
@@ -239,44 +237,14 @@
             android:textColor="@color/w_ink"
             android:textSize="13sp" />
         <TextView
-            android:id="@+id/w_key_zeros"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:layout_marginStart="4dp"
-            android:background="@drawable/widget_key"
-            android:gravity="center"
-            android:text="000"
-            android:textColor="@color/w_ink"
-            android:textSize="12sp" />
-    </LinearLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="4dp"
-        android:orientation="horizontal"
-        android:baselineAligned="false">
-        <TextView
             android:id="@+id/w_key_0"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="3"
-            android:layout_marginStart="0dp"
-            android:background="@drawable/widget_key"
-            android:gravity="center"
-            android:text="0"
-            android:textColor="@color/w_ink"
-            android:textSize="13sp" />
-        <TextView
-            android:id="@+id/w_key_dot"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_marginStart="4dp"
             android:background="@drawable/widget_key"
             android:gravity="center"
-            android:text="·"
+            android:text="0"
             android:textColor="@color/w_ink"
             android:textSize="13sp" />
     </LinearLayout>
