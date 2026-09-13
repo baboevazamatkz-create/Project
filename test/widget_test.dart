@@ -18,6 +18,7 @@ import 'package:expense_tracker/theme.dart';
 import 'package:expense_tracker/theme_mode_controller.dart';
 import 'package:expense_tracker/widgets/add_expense_sheet.dart';
 import 'package:expense_tracker/widgets/expense_tile.dart';
+import 'package:expense_tracker/widgets/glass.dart';
 import 'package:expense_tracker/widgets/currency_symbol_icon.dart';
 import 'package:expense_tracker/widgets/household_switcher_sheet.dart';
 import 'package:expense_tracker/widgets/summary_card.dart';
@@ -100,6 +101,45 @@ void main() {
     expect(find.text('Общий бюджет\nна двоих'), findsOneWidget);
     expect(find.text('Создать новый бюджет'), findsOneWidget);
     expect(find.text('Присоединиться по коду'), findsOneWidget);
+  });
+
+  testWidgets('A faded list keeps its scroll position while it scrolls',
+      (tester) async {
+    // The fade used to be added and removed around the scroll view as the
+    // offset crossed a threshold. That re-parented the CustomScrollView,
+    // which built a fresh Scrollable each time, threw the position away and
+    // left the list jumping instead of scrolling.
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TopFadeMask(
+            controller: controller,
+            child: ListView.builder(
+              controller: controller,
+              itemCount: 60,
+              itemBuilder: (context, index) =>
+                  SizedBox(height: 50, child: Text('row $index')),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.drag(find.byType(ListView), const Offset(0, -120));
+    await tester.pumpAndSettle();
+    expect(controller.offset, 120);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -80));
+    await tester.pumpAndSettle();
+    expect(controller.offset, 200);
+
+    // ...and back to the top leaves it exactly there, not bouncing.
+    await tester.drag(find.byType(ListView), const Offset(0, 200));
+    await tester.pumpAndSettle();
+    expect(controller.offset, 0);
   });
 
   testWidgets('Theme toggle flips away from what is currently on screen',

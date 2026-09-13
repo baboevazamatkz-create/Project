@@ -4,6 +4,8 @@ import 'data/household_repository.dart';
 import 'models/household.dart';
 import 'screens/home_screen.dart';
 import 'screens/household_screen.dart';
+import 'theme.dart';
+import 'widgets/app_background_pattern.dart';
 
 class AppGate extends StatefulWidget {
   const AppGate({super.key});
@@ -72,8 +74,35 @@ class _AppGateState extends State<AppGate> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      // The first screen of the app, so it wears the same room as the rest
+      // of it rather than a bare Material spinner on white.
+      return Scaffold(
+        body: AppBackgroundPattern(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'ГДЕБАБЛО?',
+                  style: microLabel(
+                    context,
+                    size: 11,
+                    color: goldFor(context).withValues(alpha: 0.9),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: goldFor(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
     final activeCode = _activeCode;

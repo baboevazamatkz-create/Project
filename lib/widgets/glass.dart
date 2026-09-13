@@ -107,3 +107,49 @@ class GlassSheet extends StatelessWidget {
     );
   }
 }
+
+/// Dissolves the top edge of a scrolling list, so rows disappear under
+/// whatever sits above it instead of being cut off at its boundary.
+///
+/// The band follows the scroll offset and is zero while the list is at
+/// rest, so the top row is never faded standing still. The mask stays in
+/// the tree at all times and only its gradient changes: adding and
+/// removing it around the scroll view re-parents the scrollable, which
+/// builds a fresh one, drops the scroll position, and leaves the list
+/// stuttering.
+class TopFadeMask extends StatelessWidget {
+  final ScrollController controller;
+  final Widget child;
+
+  /// How tall the dissolve is once the list has scrolled at least that far.
+  final double band;
+
+  const TopFadeMask({
+    super.key,
+    required this.controller,
+    required this.child,
+    this.band = 18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      child: child,
+      builder: (context, child) {
+        final offset = controller.hasClients ? controller.offset : 0.0;
+        final fade = offset.clamp(0.0, band);
+        return ShaderMask(
+          shaderCallback: (rect) => LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: const [Colors.transparent, Colors.black],
+            stops: [0.0, (fade / rect.height).clamp(0.0001, 1.0)],
+          ).createShader(rect),
+          blendMode: BlendMode.dstIn,
+          child: child,
+        );
+      },
+    );
+  }
+}
