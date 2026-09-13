@@ -779,45 +779,66 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 14),
                 ],
               ),
-              floatingActionButton: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _tourStep(
-                    tourKey: _expenseFabKey,
-                    title: 'Добавить расход',
-                    description: 'Нажмите, чтобы записать трату. Смахните '
-                        'запись влево, чтобы удалить, или зажмите её, '
-                        'чтобы изменить',
-                    child: FloatingActionButton(
-                      heroTag: 'add_expense',
-                      backgroundColor:
-                          (Theme.of(context).brightness == Brightness.dark
-                                  ? kChampagne
-                                  : kAccentColor)
-                              .withValues(alpha: 0.88),
-                      onPressed: () =>
-                          _openAddSheet(TransactionType.expense, currency),
-                      tooltip: 'Добавить расход',
-                      child: const Icon(Icons.remove_rounded),
+              // All three buttons share the one FAB slot, laid out across the
+              // full width. Only what sits in that slot is lifted when a
+              // snackbar comes up, so the clear button -- previously a
+              // Positioned child of the body -- stayed put while the other
+              // two rose over the toast.
+              floatingActionButtonLocation:
+                  FloatingActionButtonLocation.centerFloat,
+              floatingActionButton: Padding(
+                padding: const EdgeInsets.only(left: 22, right: 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // An empty box still anchors spaceBetween, so the pair on
+                    // the right keeps its place before the data arrives.
+                    snapshot.hasData ? _clearButton() : const SizedBox.shrink(),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _tourStep(
+                          tourKey: _expenseFabKey,
+                          title: 'Добавить расход',
+                          description:
+                              'Нажмите, чтобы записать трату. Смахните '
+                              'запись влево, чтобы удалить, или зажмите её, '
+                              'чтобы изменить',
+                          child: FloatingActionButton(
+                            heroTag: 'add_expense',
+                            backgroundColor:
+                                (Theme.of(context).brightness == Brightness.dark
+                                        ? kChampagne
+                                        : kAccentColor)
+                                    .withValues(alpha: 0.88),
+                            onPressed: () => _openAddSheet(
+                                TransactionType.expense, currency),
+                            tooltip: 'Добавить расход',
+                            child: const Icon(Icons.remove_rounded),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _tourStep(
+                          tourKey: _incomeFabKey,
+                          title: 'Добавить доход',
+                          description:
+                              'Нажмите, чтобы записать поступление денег',
+                          child: FloatingActionButton(
+                            heroTag: 'add_income',
+                            backgroundColor:
+                                incomeColor(context).withValues(alpha: 0.88),
+                            foregroundColor: const Color(0xFFF6F2EA),
+                            onPressed: () =>
+                                _openAddSheet(TransactionType.income, currency),
+                            tooltip: 'Добавить доход',
+                            child: const Icon(Icons.add_rounded),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  _tourStep(
-                    tourKey: _incomeFabKey,
-                    title: 'Добавить доход',
-                    description: 'Нажмите, чтобы записать поступление денег',
-                    child: FloatingActionButton(
-                      heroTag: 'add_income',
-                      backgroundColor:
-                          incomeColor(context).withValues(alpha: 0.88),
-                      foregroundColor: const Color(0xFFF6F2EA),
-                      onPressed: () =>
-                          _openAddSheet(TransactionType.income, currency),
-                      tooltip: 'Добавить доход',
-                      child: const Icon(Icons.add_rounded),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               body: AppBackgroundPattern(
                 child: Stack(
@@ -909,8 +930,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ],
                           ),
-                    if (snapshot.hasData)
-                      Positioned(left: 22, bottom: 16, child: _clearButton()),
                   ],
                 ),
               ),

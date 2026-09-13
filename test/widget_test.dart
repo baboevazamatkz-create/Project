@@ -720,6 +720,50 @@ void main() {
     expect(find.byIcon(ExpenseCategory.food.icon), findsOneWidget);
     expect(find.text('Еда'), findsOneWidget);
   });
+
+  testWidgets(
+      'A fixed snackbar lifts the FAB slot, and nothing else in the Scaffold',
+      (tester) async {
+    // Why the clear button lives in the floatingActionButton slot rather
+    // than as a Positioned child of the body: a fixed snackbar raises only
+    // what Scaffold lays out as the FAB. As a body child the button stayed
+    // where it was while the other two rose over the toast.
+    final key = GlobalKey<ScaffoldMessengerState>();
+    const inSlot = Key('in_fab_slot');
+    const inBody = Key('in_body');
+
+    await tester.pumpWidget(MaterialApp(
+      scaffoldMessengerKey: key,
+      home: const Scaffold(
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: SizedBox(key: inSlot, width: 56, height: 56),
+        body: Stack(
+          children: [
+            Positioned(
+              left: 22,
+              bottom: 16,
+              child: SizedBox(key: inBody, width: 40, height: 40),
+            ),
+          ],
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final slotBefore = tester.getBottomLeft(find.byKey(inSlot)).dy;
+    final bodyBefore = tester.getBottomLeft(find.byKey(inBody)).dy;
+
+    key.currentState!.showSnackBar(const SnackBar(
+      content: Text('Удалено'),
+      behavior: SnackBarBehavior.fixed,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(tester.getBottomLeft(find.byKey(inSlot)).dy, lessThan(slotBefore),
+        reason: 'the FAB slot should rise above the snackbar');
+    expect(tester.getBottomLeft(find.byKey(inBody)).dy, bodyBefore,
+        reason: 'a body child stays put -- which is the bug being avoided');
+  });
 }
 
 final _categoryEntries = <MapEntry<ExpenseCategory, double>>[

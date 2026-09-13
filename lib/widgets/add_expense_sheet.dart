@@ -72,6 +72,14 @@ class AddExpenseSheet extends StatefulWidget {
   State<AddExpenseSheet> createState() => _AddExpenseSheetState();
 }
 
+/// Everything in this sheet is drawn at this fraction of its usual size.
+/// It is a single-purpose form and was taking far more of the screen than
+/// it needed to; one factor keeps every proportion intact instead of
+/// nudging a dozen figures apart from each other.
+const double _kScale = 1 / 1.5;
+
+double _s(double value) => value * _kScale;
+
 class _AddExpenseSheetState extends State<AddExpenseSheet> {
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
@@ -145,176 +153,235 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+    final theme = Theme.of(context);
+    final input = theme.inputDecorationTheme;
+    final radius = BorderRadius.circular(_s(14));
+
+    // The fields, the chips and the submit button take their metrics from
+    // the app theme, so scaling only the numbers written here would shrink
+    // the gaps and leave the controls full size. This override scales them
+    // too, and stops at this sheet.
+    return Theme(
+      data: theme.copyWith(
+        iconTheme: theme.iconTheme.copyWith(size: _s(24)),
+        inputDecorationTheme: input.copyWith(
+          contentPadding:
+              EdgeInsets.symmetric(horizontal: _s(16), vertical: _s(15)),
+          border: _scaledBorder(input.border, radius),
+          enabledBorder: _scaledBorder(input.enabledBorder, radius),
+          focusedBorder: _scaledBorder(input.focusedBorder, radius),
+          hintStyle: input.hintStyle?.copyWith(fontSize: _s(16)),
+          prefixIconConstraints:
+              BoxConstraints(minWidth: _s(48), minHeight: _s(48)),
+        ),
+        chipTheme: theme.chipTheme.copyWith(
+          padding: EdgeInsets.symmetric(horizontal: _s(8), vertical: _s(6)),
+          labelPadding: EdgeInsets.symmetric(horizontal: _s(8)),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: theme.elevatedButtonTheme.style?.copyWith(
+            padding: WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: _s(22), vertical: _s(17)),
+            ),
+            textStyle: WidgetStatePropertyAll(
+              TextStyle(
+                fontFamily: 'Onest',
+                fontSize: _s(15),
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.1,
+              ),
+            ),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(borderRadius: radius),
+            ),
+          ),
+        ),
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 22),
-                decoration: BoxDecoration(
-                  color: accentForeground(context).withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(2),
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: _s(20),
+          right: _s(20),
+          top: _s(20),
+          bottom: MediaQuery.of(context).viewInsets.bottom + _s(20),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: _s(38),
+                  height: _s(4),
+                  margin: EdgeInsets.only(bottom: _s(22)),
+                  decoration: BoxDecoration(
+                    color: accentForeground(context).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(_s(2)),
+                  ),
                 ),
               ),
-            ),
-            Text(
-              (_isEditing
-                      ? (widget.type == TransactionType.expense
-                          ? 'Изменить расход'
-                          : 'Изменить доход')
-                      : (widget.type == TransactionType.expense
-                          ? 'Новый расход'
-                          : 'Новый доход'))
-                  .toUpperCase(),
-              style: microLabel(
-                context,
-                size: 11,
-                color: goldFor(context).withValues(alpha: 0.9),
-              ),
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _amountController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [_ThousandsSeparatorFormatter()],
-              autofocus: true,
-              style: moneyStyle(
-                size: 26,
-                weight: FontWeight.w300,
-                color: accentForeground(context),
-                letterSpacing: -0.5,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Сумма, ${widget.currency.symbol}',
-                hintStyle: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w300,
-                  color: accentForeground(context).withValues(alpha: 0.4),
+              Text(
+                (_isEditing
+                        ? (widget.type == TransactionType.expense
+                            ? 'Изменить расход'
+                            : 'Изменить доход')
+                        : (widget.type == TransactionType.expense
+                            ? 'Новый расход'
+                            : 'Новый доход'))
+                    .toUpperCase(),
+                style: microLabel(
+                  context,
+                  size: _s(11),
+                  color: goldFor(context).withValues(alpha: 0.9),
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                errorText: _errorText,
-                // The currency's own symbol, not a generic money icon --
-                // wrong to imply "dollar" when the budget is in rubles or
-                // tenge.
-                prefixIcon: CurrencySymbolIcon(currency: widget.currency),
               ),
-              onChanged: (_) {
-                if (_errorText != null) setState(() => _errorText = null);
-              },
-            ),
-            if (widget.type == TransactionType.expense) ...[
-              const SizedBox(height: 16),
-              Text('КАТЕГОРИЯ', style: microLabel(context)),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: ExpenseCategory.values.map((category) {
-                  final selected = category == _selectedCategory;
-                  const onSelectedInk = Color(0xFFF6F2EA);
-                  return ChoiceChip(
-                    selected: selected,
-                    showCheckmark: false,
-                    onSelected: (_) =>
-                        setState(() => _selectedCategory = category),
-                    avatar: Icon(
-                      category.icon,
-                      size: 17,
-                      color: selected ? onSelectedInk : category.color,
-                    ),
-                    label: Text(category.label),
-                    labelStyle: TextStyle(
-                      fontSize: 13,
-                      color: selected ? onSelectedInk : category.color,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    selectedColor: category.color,
-                    backgroundColor: category.color.withValues(alpha: 0.08),
-                    side: BorderSide(
-                      color: category.color.withValues(
-                        alpha: selected ? 0 : 0.28,
+              SizedBox(height: _s(18)),
+              TextField(
+                controller: _amountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [_ThousandsSeparatorFormatter()],
+                autofocus: true,
+                style: moneyStyle(
+                  size: _s(26),
+                  weight: FontWeight.w300,
+                  color: accentForeground(context),
+                  letterSpacing: -0.5,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Сумма, ${widget.currency.symbol}',
+                  hintStyle: TextStyle(
+                    fontSize: _s(20),
+                    fontWeight: FontWeight.w300,
+                    color: accentForeground(context).withValues(alpha: 0.4),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: _s(16),
+                    vertical: _s(18),
+                  ),
+                  errorText: _errorText,
+                  // The currency's own symbol, not a generic money icon --
+                  // wrong to imply "dollar" when the budget is in rubles or
+                  // tenge.
+                  prefixIcon: CurrencySymbolIcon(
+                      currency: widget.currency, size: _s(24)),
+                ),
+                onChanged: (_) {
+                  if (_errorText != null) setState(() => _errorText = null);
+                },
+              ),
+              if (widget.type == TransactionType.expense) ...[
+                SizedBox(height: _s(16)),
+                Text('КАТЕГОРИЯ', style: microLabel(context, size: _s(10.5))),
+                SizedBox(height: _s(12)),
+                Wrap(
+                  spacing: _s(10),
+                  runSpacing: _s(10),
+                  children: ExpenseCategory.values.map((category) {
+                    final selected = category == _selectedCategory;
+                    const onSelectedInk = Color(0xFFF6F2EA);
+                    return ChoiceChip(
+                      selected: selected,
+                      showCheckmark: false,
+                      onSelected: (_) =>
+                          setState(() => _selectedCategory = category),
+                      avatar: Icon(
+                        category.icon,
+                        size: _s(17),
+                        color: selected ? onSelectedInk : category.color,
                       ),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-            const SizedBox(height: 16),
-            TextField(
-              controller: _noteController,
-              decoration: const InputDecoration(
-                hintText: 'Заметка',
-                prefixIcon: Icon(Icons.edit_note_rounded),
-              ),
-            ),
-            const SizedBox(height: 16),
-            InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: _pickDate,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).inputDecorationTheme.fillColor,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: hairlineColor(context)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today_rounded, size: 18),
-                    const SizedBox(width: 12),
-                    // A long month name at a large system font scale used to
-                    // run past the edge of the row; the date shrinks to fit
-                    // rather than being clipped.
-                    Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          _dateFormat.format(_selectedDate),
-                          maxLines: 1,
-                          softWrap: false,
-                          style: const TextStyle(fontWeight: FontWeight.normal),
+                      label: Text(category.label),
+                      labelStyle: TextStyle(
+                        fontSize: _s(13),
+                        color: selected ? onSelectedInk : category.color,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      selectedColor: category.color,
+                      backgroundColor: category.color.withValues(alpha: 0.08),
+                      side: BorderSide(
+                        color: category.color.withValues(
+                          alpha: selected ? 0 : 0.28,
                         ),
                       ),
-                    ),
-                  ],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(_s(30)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+              SizedBox(height: _s(16)),
+              TextField(
+                controller: _noteController,
+                decoration: InputDecoration(
+                  hintText: 'Заметка',
+                  prefixIcon: Icon(Icons.edit_note_rounded, size: _s(24)),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: widget.type == TransactionType.income
-                    ? ElevatedButton.styleFrom(
-                        backgroundColor: incomeColor(context),
-                        foregroundColor: const Color(0xFFF6F2EA),
-                      )
-                    : null,
-                onPressed: _submit,
-                child: Text(_isEditing ? 'Сохранить' : 'Добавить'),
+              SizedBox(height: _s(16)),
+              InkWell(
+                borderRadius: radius,
+                onTap: _pickDate,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: _s(16),
+                    vertical: _s(14),
+                  ),
+                  decoration: BoxDecoration(
+                    color: input.fillColor,
+                    borderRadius: radius,
+                    border: Border.all(color: hairlineColor(context)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_rounded, size: _s(18)),
+                      SizedBox(width: _s(12)),
+                      // A long month name at a large system font scale used to
+                      // run past the edge of the row; the date shrinks to fit
+                      // rather than being clipped.
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _dateFormat.format(_selectedDate),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                              fontSize: _s(16),
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+              SizedBox(height: _s(24)),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: widget.type == TransactionType.income
+                      ? ElevatedButton.styleFrom(
+                          backgroundColor: incomeColor(context),
+                          foregroundColor: const Color(0xFFF6F2EA),
+                        )
+                      : null,
+                  onPressed: _submit,
+                  child: Text(_isEditing ? 'Сохранить' : 'Добавить'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+
+/// Keeps an input border's own colours while giving it the sheet's radius.
+InputBorder? _scaledBorder(InputBorder? border, BorderRadius radius) =>
+    border is OutlineInputBorder
+        ? border.copyWith(borderRadius: radius)
+        : border;
