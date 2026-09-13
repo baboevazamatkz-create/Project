@@ -41,3 +41,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Release signing. CI writes these from repository secrets before a build and
+# they must never be committed: a keystore in a public repository is a key
+# anyone can sign with.
+/android/key.properties
+*.jks
+*.keystore

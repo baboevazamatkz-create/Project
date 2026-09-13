@@ -1,4 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The one permission the app asks for. Declared here rather than left
+         to merge in from the Firebase artifacts, so what Google Play lists
+         on the store page is a deliberate choice and not a side effect.
+
+         Nothing else is needed: photographs come back from the system
+         camera and the system photo picker, both of which hand over a
+         single image the user chose and neither of which requires a
+         permission. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="Solidus"
         android:name="${applicationName}"
