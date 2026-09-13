@@ -198,18 +198,22 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (!widget.canCancel) ...[
-                        Center(
-                          child: Text(
-                            'SOLIDUS',
-                            style: microLabel(
-                              context,
-                              size: 11,
-                              color: goldFor(context).withValues(alpha: 0.9),
-                            ),
+                      // The wordmark is the brand, so it stands above the
+                      // form whether this is the first run or a second
+                      // budget opened from the switcher. Only the headline
+                      // under it belongs to the first run.
+                      Center(
+                        child: Text(
+                          'SOLIDUS',
+                          style: microLabel(
+                            context,
+                            size: 12,
+                            color: goldFor(context).withValues(alpha: 0.9),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                      ),
+                      SizedBox(height: widget.canCancel ? 20 : 14),
+                      if (!widget.canCancel) ...[
                         Text(
                           'Общий бюджет\nна двоих',
                           textAlign: TextAlign.center,
