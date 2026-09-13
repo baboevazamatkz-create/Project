@@ -884,7 +884,14 @@ class _HomeScreenState extends State<HomeScreen> {
               // two rose over the toast.
               floatingActionButtonLocation:
                   FloatingActionButtonLocation.centerFloat,
-              floatingActionButton: ReadableWidth(
+              // A plain ConstrainedBox rather than ReadableWidth: that one
+              // centres on both axes, and Scaffold hands its button slot
+              // loose constraints the size of the whole screen -- so the
+              // row floated up to the middle of it instead of sitting on
+              // the bottom edge. This caps the width and nothing else.
+              floatingActionButton: ConstrainedBox(
+                constraints:
+                    const BoxConstraints(maxWidth: ReadableWidth.maxWidth),
                 child: Padding(
                   padding: const EdgeInsets.only(left: 22, right: 16),
                   child: Row(

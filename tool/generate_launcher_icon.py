@@ -6,10 +6,11 @@ can be re-rendered at any density without hunting for the original artwork.
 Everything is composed at 4x and downsampled, which keeps the curves clean at
 launcher sizes.
 
-The design is the "metal" reading of the mark: an open wallet with a card
-peeking out, its front pocket filled with a champagne-to-gold gradient and a
-light bevel along the rim, and the question mark knocked out of the pocket so
-whatever is behind the icon shows through it.
+The design is the "stack": three rounded bars, each shorter than the one
+above it, reading at once as the bars of a chart and as a stack of notes.
+Each bar is a step down the champagne ramp rather than the same gold at
+falling opacity -- opacity would let a light wallpaper wash the lower two
+out, and this icon has no plate of its own to sit on.
 
 The background stays fully transparent on purpose. An adaptive icon
 (mipmap-anydpi-v26) is therefore deliberately NOT generated: the adaptive
@@ -26,13 +27,12 @@ Usage:
     python3 tool/generate_launcher_icon.py --web      # ... and the PWA set
     python3 tool/generate_launcher_icon.py --preview out.png
 
-Requires Pillow. The question mark is set in the app's own bundled Onest, so
-no external font is needed.
+Requires Pillow, and nothing else -- the mark is pure geometry.
 """
 import argparse
 import os
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -40,27 +40,22 @@ S = 1024          # nominal icon size
 SS = 4            # supersampling factor
 N = S * SS
 
-FONT = os.path.join(ROOT, 'fonts', 'Onest-SemiBold.ttf')
-
 # The app's palette. Names match lib/theme.dart where they overlap.
-OBSIDIAN = (20, 19, 24, 255)      # #141318  the plate
-CHAMPAGNE = (224, 196, 137, 255)  # #E0C489  the lit corner of the pocket
-GOLD = (154, 123, 68, 255)        # #9A7B44  its shadowed corner, and the lid
-CAVITY = (107, 84, 48, 255)       # #6B5430  the shadowed inside
-CARD = (246, 242, 234, 255)       # #F6F2EA  the card peeking out
+OBSIDIAN = (20, 19, 24, 255)      # #141318  the one opaque backdrop
+CHAMPAGNE = (224, 196, 137, 255)  # #E0C489  the top bar
+GOLD = (154, 123, 68, 255)        # #9A7B44  the bottom one
 
-PLATE_RADIUS = 0.24               # of the icon's width, matching iOS/Android
 SPLASH_MARK_DP = 96               # how big the mark sits on the launch window
 DENSITIES = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
 
 # Geometry in a 0..100 square, the same coordinates the design was drawn in.
-LID = (15, 16, 85, 48, 7)         # x0, y0, x1, y1, radius
-CARD_BOX = (19, 22, 81, 47, 4)
-CAVITY_BOX = (8, 30, 92, 47, 5)
-FRONT = (6, 40, 94, 92, 11)
-LID_TILT, CARD_TILT = 5.0, -3.0
-MARK_CENTRE, MARK_HEIGHT = (50.0, 65.4), 27.0
-
+# Three bars, left-aligned, each a step shorter and a step darker.
+BAR_HEIGHT = 15.0
+BAR_GAP = 7.5
+BAR_LEFT = 10.0
+BAR_RADIUS = 7.5
+BAR_WIDTHS = (80.0, 58.0, 36.0)
+BAR_TOP = 50 - (3 * BAR_HEIGHT + 2 * BAR_GAP) / 2
 
 def _s(v):
     return v * N / 100.0
@@ -70,93 +65,25 @@ def _layer():
     return Image.new('RGBA', (N, N), (0, 0, 0, 0))
 
 
-def _rounded(img, box, fill):
-    x0, y0, x1, y1, r = box
-    ImageDraw.Draw(img).rounded_rectangle(
-        [_s(x0), _s(y0), _s(x1), _s(y1)], radius=_s(r), fill=fill)
-
-
-def _tilt(img, degrees, centre=(50.0, 47.5)):
-    return img.rotate(-degrees, resample=Image.BICUBIC,
-                      center=(_s(centre[0]), _s(centre[1])))
-
-
-def _stack(*layers):
-    out = _layer()
-    for one in layers:
-        out = Image.alpha_composite(out, one)
-    return out
-
-
-def _gradient(start, end):
-    """A diagonal ramp from `start` at the top-left to `end` at the bottom-right."""
-    # Built small and scaled up: the ramp is linear, so interpolation is exact
-    # and this avoids allocating a million-pixel gradient per channel.
-    small = Image.new('RGBA', (64, 64))
-    px = small.load()
-    for y in range(64):
-        for x in range(64):
-            t = (x + y) / 126.0
-            px[x, y] = tuple(
-                int(round(a + (b - a) * t)) for a, b in zip(start, end))
-    return small.resize((N, N), Image.BICUBIC)
-
-
-def _mark_font(draw, height):
-    """Onest sized so the '?' ink box is exactly `height` (in 0..100 units) tall."""
-    target = _s(height)
-    size = int(target)
-    for _ in range(40):
-        font = ImageFont.truetype(FONT, size)
-        box = draw.textbbox((0, 0), '?', font=font)
-        drawn = box[3] - box[1]
-        if abs(drawn - target) <= _s(0.1):
-            break
-        size = max(1, int(round(size * target / max(drawn, 1))))
-    return ImageFont.truetype(FONT, size)
-
-
-def _question_mark(fill):
-    """The '?' alone, ink-centred on MARK_CENTRE."""
+def build_mark():
+    """The stack on a transparent square, at N x N."""
     mark = _layer()
     draw = ImageDraw.Draw(mark)
-    font = _mark_font(draw, MARK_HEIGHT)
-    box = draw.textbbox((0, 0), '?', font=font)
-    draw.text((_s(MARK_CENTRE[0]) - (box[0] + box[2]) / 2,
-               _s(MARK_CENTRE[1]) - (box[1] + box[3]) / 2),
-              '?', font=font, fill=fill)
+    for index, width in enumerate(BAR_WIDTHS):
+        top = BAR_TOP + index * (BAR_HEIGHT + BAR_GAP)
+        draw.rounded_rectangle(
+            [_s(BAR_LEFT), _s(top), _s(BAR_LEFT + width), _s(top + BAR_HEIGHT)],
+            radius=_s(BAR_RADIUS),
+            fill=_step(index, len(BAR_WIDTHS)),
+        )
     return mark
 
 
-def build_mark():
-    """The wallet on a transparent square, at N x N."""
-    lid = _layer()
-    _rounded(lid, LID, GOLD)
-    lid = _tilt(lid, LID_TILT)
-
-    cavity = _layer()
-    _rounded(cavity, CAVITY_BOX, CAVITY)
-
-    card = _layer()
-    _rounded(card, CARD_BOX, CARD)
-    card = _tilt(card, CARD_TILT)
-
-    shape = Image.new('L', (N, N), 0)
-    _rounded(shape, FRONT, 255)
-    pocket = _layer()
-    pocket.paste(_gradient(CHAMPAGNE, GOLD), mask=shape)
-
-    # A light bevel just inside the rim, the way a milled edge catches light.
-    bevel = _layer()
-    x0, y0, x1, y1, r = FRONT
-    ImageDraw.Draw(bevel).rounded_rectangle(
-        [_s(x0 + 0.9), _s(y0 + 0.9), _s(x1 - 0.9), _s(y1 - 0.9)],
-        radius=_s(r - 0.9), outline=CHAMPAGNE[:3] + (140,), width=int(_s(0.8)))
-
-    # Ivory ink rather than a hole through the pocket. Knocking the mark out
-    # only worked while a plate sat behind it; with the background gone a
-    # hole would show the wallpaper, and vanish on a light one.
-    return _stack(lid, cavity, card, pocket, bevel, _question_mark(CARD))
+def _step(index, count):
+    """Bar `index` of `count`, stepped down the champagne-to-gold ramp."""
+    t = index / max(count - 1, 1)
+    return tuple(
+        int(round(a + (b - a) * t)) for a, b in zip(CHAMPAGNE, GOLD))
 
 
 def _centre(img, margin_ratio=0.05):

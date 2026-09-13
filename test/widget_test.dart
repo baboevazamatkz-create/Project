@@ -746,6 +746,56 @@ void main() {
     expect(groups.where((g) => !g.isIncome).every((g) => !g.isIncome), isTrue);
   });
 
+  testWidgets('The button row sits on the bottom edge, its buttons level',
+      (tester) async {
+    // Both halves of a regression: wrapping this row in a widget that
+    // centres on both axes floated it to the middle of the screen, because
+    // Scaffold hands the button slot loose constraints the size of the
+    // whole scaffold. And the small button on the left has to line up with
+    // the bottom of the tall one on the right, not with its middle.
+    const clear = Key('clear');
+    const income = Key('income');
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: ReadableWidth.maxWidth),
+          child: const Padding(
+            padding: EdgeInsets.only(left: 22, right: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SizedBox(key: clear, width: 40, height: 40),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(width: 56, height: 56),
+                    SizedBox(height: 14),
+                    SizedBox(key: income, width: 56, height: 56),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        body: const SizedBox.expand(),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final screenHeight = tester.getSize(find.byType(Scaffold)).height;
+    final clearBottom = tester.getBottomLeft(find.byKey(clear)).dy;
+    final incomeBottom = tester.getBottomLeft(find.byKey(income)).dy;
+
+    expect(clearBottom, incomeBottom,
+        reason: 'the two buttons share a bottom edge');
+    expect(clearBottom, greaterThan(screenHeight - 40),
+        reason: 'and that edge is near the bottom of the screen, not its '
+            'middle');
+  });
+
   test('The reading width caps wide screens without pinching narrow ones', () {
     // A phone is narrower than the cap, so nothing about the current
     // layout changes; the cap only bites on tablets and desktop browsers.

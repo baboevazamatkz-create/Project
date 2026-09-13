@@ -201,7 +201,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                       if (!widget.canCancel) ...[
                         Center(
                           child: Text(
-                            'ГДЕБАБЛО?',
+                            'SOLIDUS',
                             style: microLabel(
                               context,
                               size: 11,
