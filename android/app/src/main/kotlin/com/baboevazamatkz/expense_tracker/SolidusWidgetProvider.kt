@@ -85,9 +85,8 @@ class SolidusWidgetProvider : AppWidgetProvider() {
             "1" to R.id.w_key_1, "2" to R.id.w_key_2, "3" to R.id.w_key_3,
             "4" to R.id.w_key_4, "5" to R.id.w_key_5, "6" to R.id.w_key_6,
             "7" to R.id.w_key_7, "8" to R.id.w_key_8, "9" to R.id.w_key_9,
-            "0" to R.id.w_key_0, "." to R.id.w_key_dot,
+            "0" to R.id.w_key_0,
             "<" to R.id.w_key_del, "C" to R.id.w_key_clear,
-            "000" to R.id.w_key_zeros,
         )
 
         private fun prefs(context: Context) =
@@ -118,13 +117,15 @@ class SolidusWidgetProvider : AppWidgetProvider() {
             prefs(context).getString(amountKey(type), "") ?: ""
 
         /**
-         * "1234567.5" -> "1 234 567.5".
+         * "1234567" -> "1 234 567".
          *
          * What is stored stays raw, so it still parses; only the face of the
          * pill is grouped. The separator is a plain space, matching
          * _groupThousands in lib/widgets/add_expense_sheet.dart -- a figure
          * typed into the widget and the same figure typed into the sheet
-         * should not look like two different conventions.
+         * should not look like two different conventions. The fractional
+         * branch is kept for anything already stored with a point; the
+         * keypad can no longer produce one.
          */
         fun grouped(raw: String): String {
             if (raw.isEmpty()) return raw
@@ -274,19 +275,9 @@ class SolidusWidgetProvider : AppWidgetProvider() {
             val next = when {
                 label == "C" -> ""
                 label == "<" -> current.dropLast(1)
-                label == "." ->
-                    if (current.contains('.') || current.isEmpty()) current
-                    else "$current."
-                // Three zeros at once, which is what a sum is usually
-                // reached by. Nothing to multiply yet, or already a
-                // standalone zero, and it does nothing rather than
-                // producing "000".
-                label == "000" ->
-                    if (current.isEmpty() || current == "0") current
-                    else if (current.length + 3 > MAX_DIGITS) current
-                    else current + "000"
                 current.length >= MAX_DIGITS -> current
-                // A leading zero is only meaningful before a decimal point.
+                // There is no decimal key, so a leading zero can never
+                // become "0.5" and is simply replaced.
                 current == "0" -> label
                 else -> current + label
             }
