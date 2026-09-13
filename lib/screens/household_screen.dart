@@ -228,26 +228,29 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                         ),
                       ),
                       SizedBox(height: widget.canCancel ? 28 : 20),
-                      if (!widget.canCancel) ...[
-                        // A step down from the 30 it used to be: under a
-                        // wordmark this size it is the second voice on the
-                        // screen, not the first.
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            'Единый ритм\nмалых финансов',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 30 / 1.3,
-                              height: 1.15,
-                              fontWeight: FontWeight.w300,
-                              letterSpacing: -0.8,
-                              color: accentForeground(context),
-                            ),
+                      // Half of the lockup, so it stands wherever the
+                      // wordmark does. It used to be first-run only, which
+                      // meant anyone who already had a budget never saw it
+                      // again -- and once the wordmark moved out of that
+                      // block and this did not, the screen showed a name
+                      // with nothing under it. A step down from the 30 it
+                      // started at: under a wordmark this size it is the
+                      // second voice on the screen, not the first.
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Единый ритм\nмалых финансов',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 30 / 1.3,
+                            height: 1.15,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: -0.8,
+                            color: accentForeground(context),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                      ],
+                      ),
+                      const SizedBox(height: 12),
                       Text(
                         'Создайте общий бюджет и поделитесь кодом, '
                         'чтобы вести расходы вместе',
