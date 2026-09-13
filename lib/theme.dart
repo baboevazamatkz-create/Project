@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// The palette is built as two matched rooms rather than one set of colours
 /// with a switch: "Ivory" (light) is warm paper, "Obsidian" (dark) is deep
@@ -180,6 +181,28 @@ TextStyle moneyStyle({
       fontFeatures: kTabularFigures,
     );
 
+/// How the phone paints its own status and navigation bars for a theme.
+///
+/// Both stay transparent: the page already runs edge to edge, so the room's
+/// own background shows through them and they are the theme's colour by
+/// construction rather than by a second copy of it. What does have to be
+/// said out loud is the icon brightness -- left alone, Flutter guesses it
+/// from the app bar's background colour, and a transparent bar reads as
+/// dark, which put white status icons on Ivory's paper.
+SystemUiOverlayStyle systemOverlayStyleFor(Brightness brightness) {
+  final isDark = brightness == Brightness.dark;
+  final icons = isDark ? Brightness.light : Brightness.dark;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    // Android reads the icon brightness; iOS reads the background's.
+    statusBarIconBrightness: icons,
+    statusBarBrightness: brightness,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: icons,
+    systemNavigationBarDividerColor: Colors.transparent,
+  );
+}
+
 ThemeData buildAppTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
   final ink = isDark ? const Color(0xFFF2EFE9) : kAccentColor;
@@ -200,6 +223,7 @@ ThemeData buildAppTheme(Brightness brightness) {
     // behind the (transparent) app bar continues it seamlessly.
     scaffoldBackgroundColor: isDark ? _obsidianTop : _ivoryTop,
     appBarTheme: AppBarTheme(
+      systemOverlayStyle: systemOverlayStyleFor(brightness),
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       foregroundColor: ink,

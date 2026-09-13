@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -42,12 +43,19 @@ class ExpenseTrackerApp extends StatelessWidget {
         themeMode: themeMode,
         builder: (context, child) {
           final mediaQuery = MediaQuery.of(context);
-          return MediaQuery(
-            data: mediaQuery.copyWith(
-              textScaler: mediaQuery.textScaler
-                  .clamp(minScaleFactor: 0.85, maxScaleFactor: 1.25),
+          // The app bar carries this style on the screens that have one;
+          // this covers the ones that do not -- the gate screen and the
+          // first-run budget screen -- so the status bar never keeps the
+          // previous room's icons after a theme switch.
+          return AnnotatedRegion<SystemUiOverlayStyle>(
+            value: systemOverlayStyleFor(Theme.of(context).brightness),
+            child: MediaQuery(
+              data: mediaQuery.copyWith(
+                textScaler: mediaQuery.textScaler
+                    .clamp(minScaleFactor: 0.85, maxScaleFactor: 1.25),
+              ),
+              child: child!,
             ),
-            child: child!,
           );
         },
         home: const AppGate(),

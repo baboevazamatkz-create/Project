@@ -721,6 +721,28 @@ void main() {
     expect(find.text('Еда'), findsOneWidget);
   });
 
+  test('Each room sets the phone\'s bars to icons it can be read against', () {
+    // Left alone, Flutter guesses the icon brightness from the app bar's
+    // background colour, and a transparent bar reads as dark -- which put
+    // white status icons on Ivory's paper.
+    final ivory =
+        buildAppTheme(Brightness.light).appBarTheme.systemOverlayStyle!;
+    final obsidian =
+        buildAppTheme(Brightness.dark).appBarTheme.systemOverlayStyle!;
+
+    expect(ivory.statusBarIconBrightness, Brightness.dark);
+    expect(ivory.systemNavigationBarIconBrightness, Brightness.dark);
+    expect(obsidian.statusBarIconBrightness, Brightness.light);
+    expect(obsidian.systemNavigationBarIconBrightness, Brightness.light);
+
+    // Transparent on purpose: the page runs edge to edge behind both bars,
+    // so their colour is the room's own rather than a second copy of it.
+    for (final style in [ivory, obsidian]) {
+      expect(style.statusBarColor, Colors.transparent);
+      expect(style.systemNavigationBarColor, Colors.transparent);
+    }
+  });
+
   testWidgets(
       'A fixed snackbar lifts the FAB slot, and nothing else in the Scaffold',
       (tester) async {
