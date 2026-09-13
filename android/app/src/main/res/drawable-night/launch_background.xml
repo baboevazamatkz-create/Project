@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The window Android paints before Flutter's first frame. Ivory, so the
-     app does not open on a white flash that belongs to no theme. -->
+<!-- Obsidian counterpart of the launch window. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/launch_background" />
 </layer-list>

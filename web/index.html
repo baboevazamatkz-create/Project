@@ -14,8 +14,8 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
   <!-- Paints the iOS status bar area to match the app's background. -->
-  <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F6F2EA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141318" media="(prefers-color-scheme: dark)">
 
   <!-- Added to the Home screen, this is what makes it open without Safari's
        chrome and show the right name and icon. iOS reads apple-touch-icon
@@ -36,11 +36,13 @@
       margin: 0;
       padding: 0;
       height: 100%;
-      background: #FAFAFA;
+      background: #F6F2EA;
       overscroll-behavior: none;
     }
     @media (prefers-color-scheme: dark) {
-      html, body { background: #121212; }
+      html, body { background: #141318; }
+      #loading .bar { background: rgba(200, 168, 107, 0.22); }
+      #loading .bar::after { background: #C8A86B; }
     }
     /* Shown until Flutter paints, so the app does not open on a blank page
        while the engine downloads. */
@@ -58,7 +60,7 @@
       width: 132px;
       height: 3px;
       border-radius: 3px;
-      background: rgba(34, 197, 94, 0.2);
+      background: rgba(154, 123, 68, 0.22);
       overflow: hidden;
     }
     #loading .bar::after {
@@ -67,7 +69,7 @@
       width: 40%;
       height: 100%;
       border-radius: 3px;
-      background: #22C55E;
+      background: #9A7B44;
       animation: slide 1.1s ease-in-out infinite;
     }
     @keyframes slide {
