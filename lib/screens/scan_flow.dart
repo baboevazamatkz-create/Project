@@ -89,6 +89,10 @@ class ScanFlow {
     );
   }
 
+  /// Closes the underlying HTTP client. Called when the screen holding
+  /// the flow goes away: a client left open keeps its connections alive.
+  void dispose() => service.dispose();
+
   Future<ScanSource?> _askSource(BuildContext context) =>
       showModalBottomSheet<ScanSource>(
         context: context,

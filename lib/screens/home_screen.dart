@@ -158,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const _tourSeenKey = 'onboarding_tour_seen_v3';
 
   final _repository = ExpenseRepository();
-  late final ScanFlow _scanFlow = ScanFlow();
+  final _scanFlow = ScanFlow();
 
   /// The scanner needs an address to talk to, passed in at build time. With
   /// none set there is nothing behind the button, so it is not shown at all
@@ -246,6 +246,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _listController.dispose();
+    _scanFlow.dispose();
     ShowcaseView.get().unregister();
     super.dispose();
   }
