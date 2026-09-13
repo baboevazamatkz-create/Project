@@ -111,6 +111,11 @@ class _HomeScreenState extends State<HomeScreen> {
   // stale conversion showing.
   AppCurrency? _displayCurrency;
 
+  // The list's own controller, kept so the top-edge fade can be switched
+  // off while the list is at rest.
+  final ScrollController _listController = ScrollController();
+  bool _listScrolled = false;
+
   // Off shows the full chronological history; on restricts to the current
   // month and clusters it by category instead. Not persisted -- it is a
   // way of looking at the list, not a setting worth remembering across
@@ -127,6 +132,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _subscribeToHousehold();
+    _listController.addListener(() {
+      final scrolled = _listController.hasClients && _listController.offset > 4;
+      if (scrolled != _listScrolled) setState(() => _listScrolled = scrolled);
+    });
     ShowcaseView.register(
       onFinish: _markTourSeen,
       onDismiss: (_) => _markTourSeen(),
@@ -174,6 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _listController.dispose();
     ShowcaseView.get().unregister();
     super.dispose();
   }
@@ -497,6 +507,25 @@ class _HomeScreenState extends State<HomeScreen> {
     final monthChanged =
         current.year != next.year || current.month != next.month;
     return monthChanged ? _monthDivider(next) : const SizedBox(height: 7);
+  }
+
+  /// Rows dissolve as they pass under the totals card instead of being cut
+  /// off at its edge. The band is a fixed 18pt measured from the shader's
+  /// own rect -- as a percentage of the viewport it grew with the screen
+  /// and ate into the first row -- and it is only applied while the list is
+  /// scrolled, so a list sitting at the top has nothing faded at all.
+  Widget _fadeUnderCard({required Widget child}) {
+    if (!_listScrolled) return child;
+    return ShaderMask(
+      shaderCallback: (rect) => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: const [Colors.transparent, Colors.black],
+        stops: [0.0, 18 / rect.height],
+      ).createShader(rect),
+      blendMode: BlendMode.dstIn,
+      child: child,
+    );
   }
 
   /// Wiping the budget lives in the bottom-left corner rather than in the
@@ -862,16 +891,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 // dissolve there. Without this the list is simply
                                 // clipped at the card's edge, which reads as a
                                 // rendering mistake rather than as depth.
-                                child: ShaderMask(
-                                  shaderCallback: (rect) =>
-                                      const LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [Colors.transparent, Colors.black],
-                                    stops: [0.0, 0.045],
-                                  ).createShader(rect),
-                                  blendMode: BlendMode.dstIn,
+                                child: _fadeUnderCard(
                                   child: CustomScrollView(
+                                    controller: _listController,
                                     slivers: [
                                       if (_groupedByCategory)
                                         ..._buildGroupedSlivers(
@@ -888,7 +910,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       else
                                         SliverPadding(
                                           padding: const EdgeInsets.fromLTRB(
-                                              24, 0, 24, 100),
+                                              24, 22, 24, 100),
                                           sliver: SliverList.separated(
                                             itemCount: expenses.length,
                                             separatorBuilder:
