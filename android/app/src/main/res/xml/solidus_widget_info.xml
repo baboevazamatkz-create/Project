@@ -1,21 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Resizable on both axes, so the size is the user's to set from the
-     launcher in the usual way. The keypad sets the floor: below roughly
-     three cells tall the keys stop being aimable.  targetCellWidth and
-     Height are the Android 12+ way of asking for a default; minWidth and
-     minHeight cover older launchers. -->
+<!-- Half the footprint it used to ask for. A launcher can always stretch a
+     widget, so the default is the smallest size the four rows still work
+     at; anything larger is the user's choice rather than ours. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:initialLayout="@layout/widget_solidus"
     android:previewLayout="@layout/widget_solidus"
     android:description="@string/w_widget_description"
-    android:minWidth="250dp"
-    android:minHeight="180dp"
-    android:minResizeWidth="180dp"
-    android:minResizeHeight="150dp"
+    android:minWidth="150dp"
+    android:minHeight="95dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="75dp"
     android:maxResizeWidth="640dp"
     android:maxResizeHeight="420dp"
-    android:targetCellWidth="4"
-    android:targetCellHeight="3"
+    android:targetCellWidth="3"
+    android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen" />
