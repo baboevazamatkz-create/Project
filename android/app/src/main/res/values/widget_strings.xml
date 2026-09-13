@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="w_widget_label">Solidus — быстрая запись</string>
-    <string name="w_widget_description">Две строки: расход с категорией и доход. Нажатие открывает запись с уже выбранным видом траты.</string>
+    <string name="w_widget_description">Расход с категорией и доход, с цифровой клавиатурой: сумма набирается прямо на рабочем столе.</string>
     <string name="w_amount_hint">Сумма</string>
+    <string name="w_no_budget">Откройте приложение</string>
+    <string name="w_saved">Записано</string>
     <string name="w_expense_action">Добавить расход</string>
     <string name="w_income_action">Добавить доход</string>
     <string name="w_minus">−</string>

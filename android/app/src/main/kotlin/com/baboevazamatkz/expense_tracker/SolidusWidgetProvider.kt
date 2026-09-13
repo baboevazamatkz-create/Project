@@ -6,40 +6,58 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.widget.RemoteViews
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import java.util.Date
+import java.util.UUID
 
 /**
- * The home-screen widget: an expense line with a category, and an income line.
+ * The home-screen widget: an expense line with a category, an income line,
+ * and a keypad under both.
  *
- * One thing the design asked for cannot be built. An app widget is a
- * RemoteViews tree drawn by the launcher's process, and the platform gives it
- * no input method -- an EditText inside a widget cannot be focused or typed
- * into on any Android version. So the amount areas are not fields but targets:
- * tapping one opens the app's own add sheet with the keyboard already up, the
- * type already chosen, and for an expense the category already set to whatever
- * the chip is showing. Entering an amount takes the same number of taps it
- * would have; what the widget saves is choosing the type and the category.
+ * A widget has no input method -- an EditText inside one cannot be focused
+ * or typed into on any Android version -- so the digits come from keys the
+ * widget draws itself. Tapping an amount focuses that row; the keys append
+ * to whichever row is focused; "−" and "+" record it.
  *
- * The chip itself is handled entirely here: tapping it cycles to the next
- * category and redraws the widget, without opening anything.
+ * Recording happens here rather than by opening the app, which is the whole
+ * point of the keypad. That means writing to Firestore from a broadcast
+ * receiver, so the document is built by hand: its shape mirrors
+ * Expense.toJson() in lib/models/expense.dart, and a Dart test asserts the
+ * two agree. Which budget and which currency come from the app, which
+ * mirrors them into preferences (see lib/data/widget_bridge.dart).
+ *
+ * When either is missing -- the app has never run, or the anonymous sign-in
+ * has not happened -- the tap opens the app instead of failing quietly.
  */
 class SolidusWidgetProvider : AppWidgetProvider() {
 
     companion object {
         const val ACTION_CYCLE = "com.baboevazamatkz.expense_tracker.WIDGET_CYCLE"
+        const val ACTION_KEY = "com.baboevazamatkz.expense_tracker.WIDGET_KEY"
+        const val ACTION_FOCUS = "com.baboevazamatkz.expense_tracker.WIDGET_FOCUS"
+        const val ACTION_COMMIT = "com.baboevazamatkz.expense_tracker.WIDGET_COMMIT"
         const val ACTION_ADD = "com.baboevazamatkz.expense_tracker.WIDGET_ADD"
 
         const val EXTRA_TYPE = "solidus.type"
         const val EXTRA_CATEGORY = "solidus.category"
+        private const val EXTRA_KEY = "solidus.key"
 
         private const val PREFS = "solidus_widget"
         private const val KEY_CATEGORY = "category_index"
+        private const val KEY_FOCUS = "focus"
+        private const val KEY_EXPENSE_AMOUNT = "amount_expense"
+        private const val KEY_INCOME_AMOUNT = "amount_income"
 
-        /**
-         * Mirrors ExpenseCategory in lib/models/expense_category.dart, in the
-         * same order. The keys are that enum's own names, which is what the
-         * app stores and what the sheet expects back.
-         */
+        private const val TYPE_EXPENSE = "expense"
+        private const val TYPE_INCOME = "income"
+
+        /** Long enough for any real amount, short enough to stay in the pill. */
+        private const val MAX_DIGITS = 12
+
+        /** Mirrors ExpenseCategory in lib/models/expense_category.dart. */
         private val CATEGORY_KEYS = listOf(
             "food", "transport", "housing", "entertainment",
             "health", "shopping", "other",
@@ -49,18 +67,39 @@ class SolidusWidgetProvider : AppWidgetProvider() {
             "Здоровье", "Покупки", "Другое",
         )
 
+        private val KEY_IDS = mapOf(
+            "1" to R.id.w_key_1, "2" to R.id.w_key_2, "3" to R.id.w_key_3,
+            "4" to R.id.w_key_4, "5" to R.id.w_key_5, "6" to R.id.w_key_6,
+            "7" to R.id.w_key_7, "8" to R.id.w_key_8, "9" to R.id.w_key_9,
+            "0" to R.id.w_key_0, "." to R.id.w_key_dot, "<" to R.id.w_key_del,
+        )
+
+        private fun prefs(context: Context) =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+        /** The app's own preferences, where the bridge leaves what we need. */
+        private fun flutterPrefs(context: Context) =
+            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+
+        private fun householdCode(context: Context): String? =
+            flutterPrefs(context).getString("flutter.widget_household_code", null)
+
+        private fun currencyKey(context: Context): String =
+            flutterPrefs(context).getString("flutter.widget_currency", null) ?: "rub"
+
         fun categoryIndex(context: Context): Int {
-            val stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getInt(KEY_CATEGORY, 0)
+            val stored = prefs(context).getInt(KEY_CATEGORY, 0)
             return ((stored % CATEGORY_KEYS.size) + CATEGORY_KEYS.size) % CATEGORY_KEYS.size
         }
 
-        fun setCategoryIndex(context: Context, index: Int) {
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .edit()
-                .putInt(KEY_CATEGORY, index)
-                .apply()
-        }
+        private fun focus(context: Context): String =
+            prefs(context).getString(KEY_FOCUS, TYPE_EXPENSE) ?: TYPE_EXPENSE
+
+        private fun amountKey(type: String) =
+            if (type == TYPE_INCOME) KEY_INCOME_AMOUNT else KEY_EXPENSE_AMOUNT
+
+        private fun amount(context: Context, type: String): String =
+            prefs(context).getString(amountKey(type), "") ?: ""
 
         fun redrawAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
@@ -71,59 +110,149 @@ class SolidusWidgetProvider : AppWidgetProvider() {
         }
 
         private fun render(context: Context, manager: AppWidgetManager, widgetId: Int) {
-            val index = categoryIndex(context)
             val views = RemoteViews(context.packageName, R.layout.widget_solidus)
-            views.setTextViewText(R.id.w_category, CATEGORY_LABELS[index])
+            val focused = focus(context)
+            val ready = householdCode(context) != null
 
-            val expense = openApp(context, widgetId, "expense", CATEGORY_KEYS[index])
-            views.setOnClickPendingIntent(R.id.w_expense_amount, expense)
-            views.setOnClickPendingIntent(R.id.w_add_expense, expense)
+            views.setTextViewText(R.id.w_category, CATEGORY_LABELS[categoryIndex(context)])
 
-            val income = openApp(context, widgetId, "income", null)
-            views.setOnClickPendingIntent(R.id.w_income_amount, income)
-            views.setOnClickPendingIntent(R.id.w_add_income, income)
+            for (type in listOf(TYPE_EXPENSE, TYPE_INCOME)) {
+                val id = if (type == TYPE_EXPENSE) R.id.w_expense_amount
+                else R.id.w_income_amount
+                val typed = amount(context, type)
+                views.setTextViewText(
+                    id,
+                    when {
+                        typed.isNotEmpty() -> typed
+                        ready -> context.getString(R.string.w_amount_hint)
+                        else -> context.getString(R.string.w_no_budget)
+                    },
+                )
+                views.setInt(
+                    id,
+                    "setBackgroundResource",
+                    if (type == focused) R.drawable.widget_field_focused
+                    else R.drawable.widget_field,
+                )
+                views.setOnClickPendingIntent(
+                    id,
+                    broadcast(context, ACTION_FOCUS, type, mapOf(EXTRA_TYPE to type)),
+                )
+            }
 
-            views.setOnClickPendingIntent(R.id.w_category, cycle(context, widgetId))
+            for ((label, viewId) in KEY_IDS) {
+                views.setOnClickPendingIntent(
+                    viewId,
+                    broadcast(context, ACTION_KEY, label, mapOf(EXTRA_KEY to label)),
+                )
+            }
+
+            views.setOnClickPendingIntent(
+                R.id.w_add_expense,
+                broadcast(context, ACTION_COMMIT, TYPE_EXPENSE, mapOf(EXTRA_TYPE to TYPE_EXPENSE)),
+            )
+            views.setOnClickPendingIntent(
+                R.id.w_add_income,
+                broadcast(context, ACTION_COMMIT, TYPE_INCOME, mapOf(EXTRA_TYPE to TYPE_INCOME)),
+            )
+            views.setOnClickPendingIntent(
+                R.id.w_category,
+                broadcast(context, ACTION_CYCLE, "cycle", emptyMap()),
+            )
 
             manager.updateAppWidget(widgetId, views)
         }
 
-        private fun openApp(
+        /**
+         * Every one of these needs its own data uri. Without it they all
+         * collapse onto a single PendingIntent and every key sends whatever
+         * was registered last.
+         */
+        private fun broadcast(
             context: Context,
-            widgetId: Int,
-            type: String,
-            category: String?,
+            action: String,
+            tag: String,
+            extras: Map<String, String>,
         ): PendingIntent {
-            val intent = Intent(context, MainActivity::class.java).apply {
-                action = ACTION_ADD
-                // Without a distinct data uri every one of these collapses
-                // onto the same PendingIntent and both rows open the same
-                // sheet, whichever was registered last.
-                data = android.net.Uri.parse("solidus://add/$type/${category ?: "none"}/$widgetId")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra(EXTRA_TYPE, type)
-                if (category != null) putExtra(EXTRA_CATEGORY, category)
+            val intent = Intent(context, SolidusWidgetProvider::class.java).apply {
+                this.action = action
+                data = Uri.parse("solidus://$action/$tag")
+                for ((k, v) in extras) putExtra(k, v)
             }
-            return PendingIntent.getActivity(
-                context,
-                0,
-                intent,
+            return PendingIntent.getBroadcast(
+                context, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         }
 
-        private fun cycle(context: Context, widgetId: Int): PendingIntent {
-            val intent = Intent(context, SolidusWidgetProvider::class.java).apply {
-                action = ACTION_CYCLE
-                data = android.net.Uri.parse("solidus://cycle/$widgetId")
-                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+        private fun openApp(context: Context, type: String): PendingIntent {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                action = ACTION_ADD
+                data = Uri.parse("solidus://add/$type")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra(EXTRA_TYPE, type)
+                if (type == TYPE_EXPENSE) {
+                    putExtra(EXTRA_CATEGORY, CATEGORY_KEYS[categoryIndex(context)])
+                }
             }
-            return PendingIntent.getBroadcast(
-                context,
-                0,
-                intent,
+            return PendingIntent.getActivity(
+                context, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
+        }
+
+        private fun appendKey(context: Context, type: String, label: String) {
+            val current = amount(context, type)
+            val next = when {
+                label == "<" -> current.dropLast(1)
+                label == "." -> if (current.contains('.') || current.isEmpty()) current
+                else "$current."
+                current.length >= MAX_DIGITS -> current
+                // A leading zero is only meaningful before a decimal point.
+                current == "0" -> label
+                else -> current + label
+            }
+            prefs(context).edit().putString(amountKey(type), next).apply()
+        }
+
+        private fun commit(context: Context, type: String) {
+            val typed = amount(context, type)
+            val value = typed.toDoubleOrNull()
+            val code = householdCode(context)
+            val user = runCatching { FirebaseAuth.getInstance().currentUser }.getOrNull()
+
+            if (value == null || value <= 0.0) {
+                // Nothing typed: fall back to the sheet, which is what the
+                // widget did before it had a keypad.
+                openApp(context, type).send()
+                return
+            }
+            if (code == null || user == null) {
+                openApp(context, type).send()
+                return
+            }
+
+            val document = mutableMapOf<String, Any?>(
+                "id" to UUID.randomUUID().toString(),
+                "amount" to value,
+                "category" to if (type == TYPE_EXPENSE) {
+                    CATEGORY_KEYS[categoryIndex(context)]
+                } else {
+                    null
+                },
+                "note" to "",
+                "date" to Date(),
+                "currency" to currencyKey(context),
+                "type" to type,
+            )
+            FirebaseFirestore.getInstance()
+                .collection("households")
+                .document(code)
+                .collection("expenses")
+                .document(document["id"] as String)
+                .set(document)
+
+            prefs(context).edit().putString(amountKey(type), "").apply()
         }
     }
 
@@ -141,16 +270,34 @@ class SolidusWidgetProvider : AppWidgetProvider() {
         widgetId: Int,
         newOptions: android.os.Bundle,
     ) {
-        // Resizing re-lays out the same tree, but redrawing keeps the chip
-        // correct if the widget was resized while the app changed it.
         render(context, manager, widgetId)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_CYCLE) {
-            setCategoryIndex(context, categoryIndex(context) + 1)
-            redrawAll(context)
+        when (intent.action) {
+            ACTION_CYCLE ->
+                prefs(context).edit()
+                    .putInt(KEY_CATEGORY, categoryIndex(context) + 1)
+                    .apply()
+
+            ACTION_FOCUS ->
+                prefs(context).edit()
+                    .putString(KEY_FOCUS, intent.getStringExtra(EXTRA_TYPE) ?: TYPE_EXPENSE)
+                    .apply()
+
+            ACTION_KEY ->
+                appendKey(
+                    context,
+                    focus(context),
+                    intent.getStringExtra(EXTRA_KEY) ?: return,
+                )
+
+            ACTION_COMMIT ->
+                commit(context, intent.getStringExtra(EXTRA_TYPE) ?: TYPE_EXPENSE)
+
+            else -> return
         }
+        redrawAll(context)
     }
 }

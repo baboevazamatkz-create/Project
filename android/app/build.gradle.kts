@@ -76,3 +76,15 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // The widget records straight into Firestore from its own broadcast
+    // receiver, so the app module needs the native SDKs on its compile
+    // classpath -- the Flutter plugins pull them in transitively, but a
+    // plugin's transitive dependencies are not visible to app code. The
+    // BoM keeps the two in step; it is the generation cloud_firestore 5.6
+    // and firebase_auth 5.7 are built against.
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-auth")
+}

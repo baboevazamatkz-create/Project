@@ -14,6 +14,7 @@ import 'package:expense_tracker/screens/home_screen.dart'
     show monthDividerLabel;
 import 'package:expense_tracker/screens/household_screen.dart';
 import 'package:expense_tracker/screens/stats_screen.dart';
+import 'package:expense_tracker/data/widget_bridge.dart';
 import 'package:expense_tracker/theme.dart';
 import 'package:expense_tracker/widgets/readable_width.dart';
 import 'package:expense_tracker/theme_mode_controller.dart';
@@ -859,6 +860,51 @@ void main() {
     // Tracking is a share of the size, so the wordmark keeps its rhythm at
     // whichever of the two sizes it is drawn.
     expect(style.letterSpacing, closeTo(36 * 0.12, 0.001));
+  });
+
+  test('The widget writes the same document the app does', () {
+    // SolidusWidgetProvider.kt builds an expense by hand, because it
+    // records from a broadcast receiver with no Dart to call. Nothing in
+    // Kotlin can be checked from here, but the field names can: if the
+    // model gains or renames one, this fails and says where to go.
+    const widgetWrites = {
+      'id',
+      'amount',
+      'category',
+      'note',
+      'date',
+      'currency',
+      'type',
+    };
+    final json = Expense(
+      id: 'x',
+      amount: 1,
+      date: DateTime(2026, 9, 13),
+      category: ExpenseCategory.food,
+    ).toJson();
+
+    expect(json.keys.toSet(), widgetWrites,
+        reason: 'android/app/src/main/kotlin/.../SolidusWidgetProvider.kt '
+            'builds this document by hand and must be updated with it');
+    // The two enums it also mirrors, by name and order.
+    expect(ExpenseCategory.values.map((c) => c.storageKey).toList(), [
+      'food',
+      'transport',
+      'housing',
+      'entertainment',
+      'health',
+      'shopping',
+      'other'
+    ]);
+    expect(TransactionType.values.map((t) => t.storageKey).toList(),
+        ['expense', 'income']);
+  });
+
+  test('The widget reads the budget and currency under agreed key names', () {
+    // Read natively out of FlutterSharedPreferences, where Flutter stores
+    // them under a "flutter." prefix.
+    expect(WidgetBridge.householdKey, 'widget_household_code');
+    expect(WidgetBridge.currencyKey, 'widget_currency');
   });
 
   test('The reading width caps wide screens without pinching narrow ones', () {
