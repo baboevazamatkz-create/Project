@@ -427,8 +427,10 @@ ThemeData buildAppTheme(Brightness brightness) {
         color: Color(0xFFF2EFE9),
         fontSize: 14,
       ),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      // Pinned to the very bottom rather than floating: a floating bar gets
+      // lifted above the action buttons and lands in the middle of the
+      // list, on top of the rows it is talking about.
+      behavior: SnackBarBehavior.fixed,
     ),
   );
 }
