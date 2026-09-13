@@ -64,12 +64,16 @@ class ScannedTransaction {
   /// The worker validates and clamps before answering, so anything that
   /// arrives here is already within range; this still refuses a record
   /// without a usable amount rather than writing a zero into the budget.
+  ///
+  /// The sign is thrown away rather than trusted. A statement writes an
+  /// expense as "- 1 920,00", and a minus carried through to here would
+  /// otherwise drop the whole page of them; direction is [type]'s job.
   static ScannedTransaction? tryFromJson(
     Map<String, dynamic> json, {
     required AppCurrency fallbackCurrency,
   }) {
-    final amount = (json['amount'] as num?)?.toDouble();
-    if (amount == null || !amount.isFinite || amount <= 0) return null;
+    final amount = (json['amount'] as num?)?.toDouble().abs();
+    if (amount == null || !amount.isFinite || amount == 0) return null;
 
     final rawDate = json['date'];
     final date = rawDate is String ? DateTime.tryParse(rawDate) : null;
@@ -140,27 +144,28 @@ class ScanResult {
 
 /// Marks the records that look to be in the budget already.
 ///
-/// Same direction, same day and a sum within a hundredth: a repeated
-/// scan of the same receipt, or a screenshot overlapping the previous
-/// one. These are still offered, just unticked, because two identical
-/// coffees on one day are also a real thing.
+/// Same direction, same day and a sum within a hundredth. Counted rather
+/// than merely matched: a statement can legitimately carry the same 500
+/// twice on one day, and only as many scanned rows are marked as there are
+/// records already standing behind them. The rest are offered ticked,
+/// because the second identical coffee is usually a second coffee.
 Set<int> findDuplicates(
   List<ScannedTransaction> scanned,
   List<Expense> existing,
 ) {
-  final seen = <String>{};
+  final available = <String, int>{};
   for (final expense in existing) {
-    seen.add(_dedupeKey(
-      expense.type,
-      expense.amount,
-      expense.date,
-    ));
+    final key = _dedupeKey(expense.type, expense.amount, expense.date);
+    available[key] = (available[key] ?? 0) + 1;
   }
   final duplicates = <int>{};
   for (var i = 0; i < scanned.length; i++) {
     final item = scanned[i];
     final key = _dedupeKey(item.type, item.amount, item.date);
-    if (!seen.add(key)) duplicates.add(i);
+    final left = available[key] ?? 0;
+    if (left == 0) continue;
+    available[key] = left - 1;
+    duplicates.add(i);
   }
   return duplicates;
 }

@@ -75,10 +75,16 @@ Future<void> _pumpSheet(
   required Set<int> duplicates,
   required void Function(List<Expense>) onConfirm,
   Brightness brightness = Brightness.light,
+  double textScale = 1.0,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: buildAppTheme(brightness),
+      builder: (context, inner) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: inner!,
+      ),
       home: Scaffold(
         body: ScanReviewSheet(
           result: result,
@@ -116,7 +122,6 @@ void main() {
           'document': 'receipt',
           'transactions': [
             {'type': 'expense', 'amount': 0, 'date': '2026-09-12'},
-            {'type': 'expense', 'amount': -40, 'date': '2026-09-12'},
             {'type': 'expense', 'date': '2026-09-12'},
             {'type': 'expense', 'amount': 40, 'date': '2026-09-12'},
           ],
@@ -126,6 +131,29 @@ void main() {
 
       expect(result.transactions, hasLength(1));
       expect(result.transactions.single.amount, 40);
+    });
+
+    test('a statement’s minus is a direction, not an amount', () {
+      // "- 1 920,00 ₸" read literally would have dropped every expense on
+      // the page and left the sheet saying nothing was found.
+      final result = ScanResult.fromJson(
+        {
+          'document': 'statement',
+          'transactions': [
+            {
+              'type': 'expense',
+              'amount': -1920,
+              'date': '2026-09-08',
+              'note': 'YANDEX.GO',
+              'category': 'transport',
+            },
+          ],
+        },
+        fallbackCurrency: AppCurrency.kzt,
+      );
+
+      expect(result.transactions.single.amount, 1920);
+      expect(result.transactions.single.type, TransactionType.expense);
     });
 
     test(
@@ -287,44 +315,82 @@ void main() {
   });
 
   group('Preparing a snapshot', () {
-    test('a small photo goes up untouched, with its real type', () {
-      final small = Uint8List.fromList(
-        img.encodeJpg(img.Image(width: 40, height: 30), quality: 80),
-      );
-      expect(small.length, lessThan(kScanPassThroughBytes));
-
-      final prepared = prepareScanImage(small);
-      expect(prepared.mime, 'image/jpeg');
-      expect(prepared.bytes, same(small));
-    });
-
-    test('an oversized snapshot is brought down to what a model reads at', () {
-      // A PNG this size is well past the pass-through limit, so it takes
-      // the decode-and-resize path.
-      final large = img.Image(width: 3000, height: 2000);
-      for (var x = 0; x < large.width; x += 7) {
-        for (var y = 0; y < large.height; y += 5) {
-          large.setPixelRgb(x, y, x % 255, y % 255, 120);
+    Uint8List screenshot(int width, int height) {
+      final image = img.Image(width: width, height: height);
+      for (var x = 0; x < width; x += 3) {
+        for (var y = 0; y < height; y += 3) {
+          image.setPixelRgb(x, y, x % 255, y % 255, 120);
         }
       }
-      final raw = Uint8List.fromList(img.encodePng(large));
-      expect(raw.length, greaterThan(kScanPassThroughBytes));
+      return Uint8List.fromList(img.encodePng(image));
+    }
 
-      final prepared = prepareScanImage(raw);
-      final decoded = img.decodeImage(prepared.bytes)!;
+    test('a phone screenshot is cut into tiles, not squeezed into a square',
+        () {
+      // 1080x2400 is an ordinary phone screenshot. Fitted whole into what
+      // a model reads at, it would come back about 700 pixels wide and a
+      // four-column table would stop being legible; tiling keeps the width.
+      final tiles = prepareScanImages(
+        (bytes: screenshot(1080, 2400), maxTiles: kScanMaxTiles),
+      );
 
-      expect(prepared.mime, 'image/jpeg');
-      expect(decoded.width, kScanMaxEdge);
-      expect(decoded.height, 2000 * kScanMaxEdge ~/ 3000);
-      expect(prepared.bytes.length, lessThan(raw.length));
+      expect(tiles.length, greaterThan(1));
+      for (final tile in tiles) {
+        final decoded = img.decodeImage(tile.bytes)!;
+        expect(decoded.width, 1080);
+        expect(
+            decoded.width * decoded.height, lessThanOrEqualTo(kScanTilePixels));
+        expect(tile.mime, 'image/jpeg');
+      }
+    });
+
+    test('the tiles overlap, so no row falls between them', () {
+      final tiles = prepareScanImages(
+        (bytes: screenshot(1080, 2400), maxTiles: kScanMaxTiles),
+      );
+
+      final covered = tiles
+          .map((t) => img.decodeImage(t.bytes)!.height)
+          .reduce((a, b) => a + b);
+      // More pixels of height across the tiles than the original had:
+      // that surplus is the overlap.
+      expect(covered, greaterThan(2400));
+    });
+
+    test('a snapshot that already fits is left as one image', () {
+      final tiles = prepareScanImages(
+        (bytes: screenshot(900, 700), maxTiles: kScanMaxTiles),
+      );
+
+      expect(tiles, hasLength(1));
+      final decoded = img.decodeImage(tiles.single.bytes)!;
+      expect(decoded.width, 900);
+      expect(decoded.height, 700);
+    });
+
+    test('a wide photo is narrowed to the tile width', () {
+      final tiles = prepareScanImages(
+        (bytes: screenshot(3000, 2000), maxTiles: kScanMaxTiles),
+      );
+
+      expect(img.decodeImage(tiles.first.bytes)!.width, kScanTileWidth);
+    });
+
+    test('the tile budget is respected', () {
+      final tiles = prepareScanImages(
+        (bytes: screenshot(1080, 20000), maxTiles: 3),
+      );
+
+      expect(tiles, hasLength(3));
     });
 
     test('bytes that are not an image at all are passed on, not thrown away',
         () {
       final junk = Uint8List.fromList(List.filled(600 * 1024, 7));
-      final prepared = prepareScanImage(junk);
-      expect(prepared.bytes, same(junk));
-      expect(prepared.mime, 'image/jpeg');
+      final tiles = prepareScanImages((bytes: junk, maxTiles: kScanMaxTiles));
+
+      expect(tiles.single.bytes, same(junk));
+      expect(tiles.single.mime, 'image/jpeg');
     });
   });
 
@@ -362,19 +428,29 @@ void main() {
       );
     });
 
-    test('the same row twice on one screenshot is caught as well', () {
+    test('a statement may hold the same sum twice in a day, and both stand',
+        () {
       final scanned = ScanResult.fromJson(
         {
           'document': 'statement',
           'transactions': [
-            {'type': 'expense', 'amount': 90, 'date': '2026-09-12'},
-            {'type': 'expense', 'amount': 90, 'date': '2026-09-12'},
+            {'type': 'expense', 'amount': 500, 'date': '2026-09-07'},
+            {'type': 'expense', 'amount': 500, 'date': '2026-09-07'},
           ],
         },
         fallbackCurrency: AppCurrency.rub,
       ).transactions;
 
-      expect(findDuplicates(scanned, const []), {1});
+      // Nothing in the budget yet: two real purchases, both offered.
+      expect(findDuplicates(scanned, const []), isEmpty);
+
+      // One of them already recorded: only one of the two is a repeat.
+      expect(
+        findDuplicates(scanned, [
+          _expense(amount: 500, date: DateTime(2026, 9, 7)),
+        ]),
+        {0},
+      );
     });
   });
 
@@ -500,6 +576,96 @@ void main() {
       expect(find.text('НИЧЕГО НЕ НАЙДЕНО'), findsOneWidget);
       expect(find.text('Закрыть'), findsOneWidget);
       expect(find.textContaining('Добавить'), findsNothing);
+    });
+
+    testWidgets('a whole statement can be dropped or taken in one tap',
+        (tester) async {
+      List<Expense>? confirmed;
+      await _pumpSheet(
+        tester,
+        result: parsed(),
+        duplicates: const {},
+        onConfirm: (expenses) => confirmed = expenses,
+      );
+
+      await tester.tap(find.text('СНЯТЬ ВСЕ'));
+      await tester.pumpAndSettle();
+      expect(find.text('ВЫБРАНО 0 ИЗ 2'), findsOneWidget);
+
+      await tester.tap(find.text('ВЫБРАТЬ ВСЕ'));
+      await tester.pumpAndSettle();
+      expect(find.text('ВЫБРАНО 2 ИЗ 2'), findsOneWidget);
+
+      await tester.tap(find.text('Добавить 2 записи'));
+      await tester.pumpAndSettle();
+      expect(confirmed, hasLength(2));
+    });
+
+    testWidgets('a forty-row statement fits a small phone', (tester) async {
+      final many = ScanResult.fromJson(
+        {
+          'document': 'statement',
+          'transactions': [
+            for (var i = 0; i < 40; i++)
+              {
+                'type': i.isEven ? 'expense' : 'income',
+                'amount': 100 + i * 37,
+                'date': '2026-09-0${1 + i % 9}',
+                'note': 'Операция номер $i, довольно длинное описание',
+                'category': 'food',
+              },
+          ],
+        },
+        fallbackCurrency: AppCurrency.rub,
+      );
+
+      tester.view.physicalSize = const Size(320, 534);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await _pumpSheet(
+        tester,
+        result: many,
+        duplicates: const {},
+        onConfirm: (_) {},
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('ВЫБРАНО 40 ИЗ 40'), findsOneWidget);
+    });
+
+    testWidgets('…and the same phone at the largest system font',
+        (tester) async {
+      final many = ScanResult.fromJson(
+        {
+          'document': 'statement',
+          'transactions': [
+            for (var i = 0; i < 12; i++)
+              {
+                'type': 'expense',
+                'amount': 1000 + i * 137,
+                'date': '2026-09-08',
+                'note': 'Операция номер $i, довольно длинное описание',
+                'category': 'food',
+              },
+          ],
+        },
+        fallbackCurrency: AppCurrency.rub,
+      );
+
+      tester.view.physicalSize = const Size(320, 534);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await _pumpSheet(
+        tester,
+        result: many,
+        duplicates: const {},
+        onConfirm: (_) {},
+        textScale: 1.25,
+      );
+
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('the sheet survives the dark theme', (tester) async {

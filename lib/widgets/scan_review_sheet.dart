@@ -62,6 +62,18 @@ class _ScanReviewSheetState extends State<ScanReviewSheet> {
     }
   }
 
+  bool get _allSelected => _selected.length == _rows.length;
+
+  void _toggleAll() {
+    setState(() {
+      if (_allSelected) {
+        _selected.clear();
+      } else {
+        _selected.addAll(List.generate(_rows.length, (i) => i));
+      }
+    });
+  }
+
   void _toggle(int index) {
     setState(() {
       if (!_selected.remove(index)) _selected.add(index);
@@ -133,103 +145,142 @@ class _ScanReviewSheetState extends State<ScanReviewSheet> {
   Widget build(BuildContext context) {
     final gold = goldFor(context);
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 18,
-        right: 18,
-        top: 18,
-        bottom: MediaQuery.of(context).padding.bottom + 18,
+    return ConstrainedBox(
+      // Forty rows would otherwise push the sheet to the top of the
+      // screen, leaving nothing of the budget behind it to orient by.
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.86,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 38,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 18),
-              decoration: BoxDecoration(
-                color: accentForeground(context).withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _title,
-                  style: microLabel(context,
-                      size: 11, color: gold.withValues(alpha: 0.9)),
-                ),
-              ),
-              if (!_isEmpty)
-                Text(
-                  'ВЫБРАНО ${_selected.length} ИЗ ${_rows.length}',
-                  style: microLabel(context, size: 10),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          if (_isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              child: Text(
-                'На снимке не нашлось ни одной операции. Попробуйте снять '
-                'чек целиком, при ровном свете и без бликов.',
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.4,
-                  color: accentForeground(context).withValues(alpha: 0.75),
-                ),
-              ),
-            )
-          else
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: _rows.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) => _ScanRow(
-                  row: _rows[index],
-                  currency: widget.currency,
-                  selected: _selected.contains(index),
-                  duplicate: widget.duplicates.contains(index),
-                  onToggle: () => _toggle(index),
-                  onFlipType: () => _flipType(index),
-                  onEdit: () => _edit(index),
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 18,
+          right: 18,
+          top: 18,
+          bottom: MediaQuery.of(context).padding.bottom + 18,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 18),
+                decoration: BoxDecoration(
+                  color: accentForeground(context).withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(_isEmpty ? 'Закрыть' : 'Отмена'),
-                ),
-              ),
-              if (!_isEmpty) ...[
-                const SizedBox(width: 12),
+            // Two lines rather than one. Squeezed onto a single row, the
+            // title, the count and the toggle ran 21 pixels past the edge
+            // of a 320-wide phone and the title wrapped one letter per
+            // line to make room.
+            Row(
+              children: [
                 Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed: _selected.isEmpty ? null : _confirm,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(_selected.length == 1
-                          ? 'Добавить запись'
-                          : 'Добавить ${_selected.length} ${_plural(_selected.length)}'),
+                  child: Text(
+                    _title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: microLabel(
+                      context,
+                      size: 11,
+                      color: gold.withValues(alpha: 0.9),
                     ),
                   ),
                 ),
+                if (!_isEmpty)
+                  // A statement runs to dozens of rows; ticking them one
+                  // by one to drop three of them is not a reasonable ask.
+                  InkWell(
+                    onTap: _toggleAll,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      child: Text(
+                        _allSelected ? 'СНЯТЬ ВСЕ' : 'ВЫБРАТЬ ВСЕ',
+                        maxLines: 1,
+                        style: microLabel(context, size: 10, color: gold),
+                      ),
+                    ),
+                  ),
               ],
-            ],
-          ),
-        ],
+            ),
+            if (!_isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'ВЫБРАНО ${_selected.length} ИЗ ${_rows.length}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: microLabel(context, size: 10),
+                ),
+              ),
+            const SizedBox(height: 14),
+            if (_isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                child: Text(
+                  'На снимке не нашлось ни одной операции. Попробуйте снять '
+                  'чек целиком, при ровном свете и без бликов.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: accentForeground(context).withValues(alpha: 0.75),
+                  ),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  itemCount: _rows.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) => _ScanRow(
+                    row: _rows[index],
+                    currency: widget.currency,
+                    selected: _selected.contains(index),
+                    duplicate: widget.duplicates.contains(index),
+                    onToggle: () => _toggle(index),
+                    onFlipType: () => _flipType(index),
+                    onEdit: () => _edit(index),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(_isEmpty ? 'Закрыть' : 'Отмена'),
+                  ),
+                ),
+                if (!_isEmpty) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: _selected.isEmpty ? null : _confirm,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(_selected.length == 1
+                            ? 'Добавить запись'
+                            : 'Добавить ${_selected.length} ${_plural(_selected.length)}'),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
