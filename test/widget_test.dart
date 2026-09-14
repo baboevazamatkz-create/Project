@@ -13,7 +13,7 @@ import 'package:expense_tracker/models/household.dart';
 import 'package:expense_tracker/models/transaction_type.dart';
 import 'package:expense_tracker/models/expense_category.dart';
 import 'package:expense_tracker/screens/home_screen.dart'
-    show monthDividerLabel;
+    show expenseTotals, monthDividerLabel;
 import 'package:expense_tracker/screens/household_screen.dart';
 import 'package:expense_tracker/screens/stats_screen.dart';
 import 'package:expense_tracker/data/household_repository.dart';
@@ -310,6 +310,8 @@ void main() {
           todayIncomeTotal: 7654321,
           monthExpenseTotal: 98765432,
           monthIncomeTotal: 12345678,
+          allExpenseTotal: 987654321,
+          allIncomeTotal: 123456789,
           currency: AppCurrency.kzt,
         ),
       ),
@@ -740,6 +742,88 @@ void main() {
     });
   });
 
+  group('expenseTotals', () {
+    final now = DateTime(2026, 9, 14, 13);
+
+    Expense at(DateTime date, double amount, {bool income = false}) => Expense(
+          id: '${date.toIso8601String()}-$amount-$income',
+          amount: amount,
+          date: date,
+          type: income ? TransactionType.income : TransactionType.expense,
+          category: income ? null : ExpenseCategory.food,
+        );
+
+    final ledger = [
+      at(DateTime(2026, 9, 14, 9), 300), // сегодня
+      at(DateTime(2026, 9, 14, 11), 1000, income: true), // сегодня
+      at(DateTime(2026, 9, 2), 700), // этот месяц, не сегодня
+      at(DateTime(2026, 8, 30), 5000), // прошлый месяц
+      at(DateTime(2025, 9, 14), 40, income: true), // тот же день год назад
+    ];
+
+    test('today is this month, this day, and nothing else', () {
+      final totals = expenseTotals(ledger, now: now);
+      expect(totals.todayExpense, 300);
+      expect(totals.todayIncome, 1000);
+    });
+
+    test(
+        'the month stops at the month, and the same day a year ago is not '
+        'today', () {
+      final totals = expenseTotals(ledger, now: now);
+      expect(totals.monthExpense, 1000); // 300 + 700, без августовских 5000
+      expect(totals.monthIncome, 1000);
+    });
+
+    test('all time counts everything, whatever month it fell in', () {
+      final totals = expenseTotals(ledger, now: now);
+      expect(totals.allExpense, 6000); // 300 + 700 + 5000
+      expect(totals.allIncome, 1040); // 1000 + 40
+    });
+
+    test('an empty budget totals to zero rather than to nothing', () {
+      final totals = expenseTotals(const [], now: now);
+      expect(totals.allExpense, 0);
+      expect(totals.allIncome, 0);
+      expect(totals.monthExpense, 0);
+      expect(totals.todayExpense, 0);
+    });
+  });
+
+  testWidgets('The card carries all time as well as today and the month',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(Brightness.light),
+        home: const Scaffold(
+          body: SummaryCard(
+            todayExpenseTotal: 300,
+            todayIncomeTotal: 1000,
+            monthExpenseTotal: 1000,
+            monthIncomeTotal: 1000,
+            allExpenseTotal: 6000,
+            allIncomeTotal: 1040,
+            currency: AppCurrency.rub,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('СЕГОДНЯ'), findsOneWidget);
+    expect(find.text('ЗА МЕСЯЦ'), findsOneWidget);
+    expect(find.text('ЗА ВСЁ ВРЕМЯ'), findsOneWidget);
+
+    // Built through the formatter rather than typed out: it groups with
+    // non-breaking spaces, which look identical in a source file and are
+    // not the same character.
+    String rub(double value) => AppCurrency.rub.format.format(value);
+
+    // The all-time net is its own figure, not a repeat of the month's.
+    expect(find.text('−${rub(4960)}'), findsOneWidget);
+    expect(find.text('+${rub(1040)}'), findsOneWidget);
+    expect(find.text('−${rub(6000)}'), findsOneWidget);
+  });
+
   testWidgets('Summary card marks converted totals as approximate',
       (tester) async {
     await tester.pumpWidget(
@@ -750,6 +834,8 @@ void main() {
             todayIncomeTotal: 2000,
             monthExpenseTotal: 1000,
             monthIncomeTotal: 2000,
+            allExpenseTotal: 5000,
+            allIncomeTotal: 9000,
             currency: AppCurrency.usd,
             isApproximate: true,
           ),
@@ -769,6 +855,8 @@ void main() {
             todayIncomeTotal: 2000,
             monthExpenseTotal: 1000,
             monthIncomeTotal: 2000,
+            allExpenseTotal: 5000,
+            allIncomeTotal: 9000,
             currency: AppCurrency.rub,
           ),
         ),

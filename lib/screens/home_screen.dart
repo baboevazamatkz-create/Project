@@ -444,24 +444,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  /// Sums today's and this month's income and expenses in a single pass,
-  /// instead of walking the whole list once per figure on every rebuild.
-  _Totals _totals(List<Expense> expenses) {
-    final now = DateTime.now();
-    var totals = const _Totals();
-    for (final expense in expenses) {
-      final date = expense.date;
-      if (date.year != now.year || date.month != now.month) continue;
-      final isToday = date.day == now.day;
-      totals = totals.add(
-        amount: expense.amount,
-        isIncome: expense.isIncome,
-        isToday: isToday,
-      );
-    }
-    return totals;
-  }
-
   /// Same plain glyph treatment as the other AppBar icons -- it is the
   /// budget's own currency symbol, not a filled pill, so it reads as one
   /// of the toolbar's icons rather than a separate loud control. The only
@@ -799,11 +781,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           stream: _expensesStream,
           builder: (context, snapshot) {
             final expenses = snapshot.data ?? const <Expense>[];
-            final totals = _totals(expenses);
+            final totals = expenseTotals(expenses);
             final displayCurrency = _displayCurrency ?? currency;
             final isConverted = displayCurrency != currency;
             final displayTotals = isConverted
-                ? _Totals(
+                ? Totals(
                     todayIncome: convertApprox(totals.todayIncome,
                         from: currency, to: displayCurrency),
                     todayExpense: convertApprox(totals.todayExpense,
@@ -811,6 +793,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     monthIncome: convertApprox(totals.monthIncome,
                         from: currency, to: displayCurrency),
                     monthExpense: convertApprox(totals.monthExpense,
+                        from: currency, to: displayCurrency),
+                    allIncome: convertApprox(totals.allIncome,
+                        from: currency, to: displayCurrency),
+                    allExpense: convertApprox(totals.allExpense,
                         from: currency, to: displayCurrency),
                   )
                 : totals;
@@ -1037,9 +1023,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 tourKey: _summaryCardKey,
                                 title: 'Итоги',
                                 description: 'Сколько потрачено и '
-                                    'заработано сегодня и за месяц — '
-                                    'и то и другое видно, пока листаете '
-                                    'список',
+                                    'заработано сегодня, за месяц и за всё '
+                                    'время — видно, пока листаете список',
                                 targetShapeBorder: const RoundedRectangleBorder(
                                   borderRadius: BorderRadius.all(
                                     Radius.circular(24),
@@ -1050,6 +1035,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   todayIncomeTotal: displayTotals.todayIncome,
                                   monthExpenseTotal: displayTotals.monthExpense,
                                   monthIncomeTotal: displayTotals.monthIncome,
+                                  allExpenseTotal: displayTotals.allExpense,
+                                  allIncomeTotal: displayTotals.allIncome,
                                   currency: displayCurrency,
                                   isApproximate: isConverted,
                                 ),
@@ -1148,29 +1135,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-class _Totals {
+/// Sums today's, this month's and every recorded income and expense in a
+/// single pass, instead of walking the whole list once per figure on every
+/// rebuild.
+///
+/// [now] is injectable so the split can be tested without waiting for a
+/// particular date to come round.
+Totals expenseTotals(List<Expense> expenses, {DateTime? now}) {
+  final today = now ?? DateTime.now();
+  var totals = const Totals();
+  for (final expense in expenses) {
+    final date = expense.date;
+    final inMonth = date.year == today.year && date.month == today.month;
+    totals = totals.add(
+      amount: expense.amount,
+      isIncome: expense.isIncome,
+      isToday: inMonth && date.day == today.day,
+      inMonth: inMonth,
+    );
+  }
+  return totals;
+}
+
+class Totals {
   final double todayIncome;
   final double todayExpense;
   final double monthIncome;
   final double monthExpense;
+  final double allIncome;
+  final double allExpense;
 
-  const _Totals({
+  const Totals({
     this.todayIncome = 0,
     this.todayExpense = 0,
     this.monthIncome = 0,
     this.monthExpense = 0,
+    this.allIncome = 0,
+    this.allExpense = 0,
   });
 
-  _Totals add({
+  Totals add({
     required double amount,
     required bool isIncome,
     required bool isToday,
+    required bool inMonth,
   }) {
-    return _Totals(
+    return Totals(
       todayIncome: todayIncome + (isIncome && isToday ? amount : 0),
       todayExpense: todayExpense + (!isIncome && isToday ? amount : 0),
-      monthIncome: monthIncome + (isIncome ? amount : 0),
-      monthExpense: monthExpense + (!isIncome ? amount : 0),
+      monthIncome: monthIncome + (isIncome && inMonth ? amount : 0),
+      monthExpense: monthExpense + (!isIncome && inMonth ? amount : 0),
+      allIncome: allIncome + (isIncome ? amount : 0),
+      allExpense: allExpense + (!isIncome ? amount : 0),
     );
   }
 }

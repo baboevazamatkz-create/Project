@@ -11,11 +11,20 @@ import '../theme.dart';
 /// set large and light; what it was made of (income and spending) sits
 /// under it as supporting detail. That is the order a bank states it in,
 /// and it is why the card reads as a statement rather than a tally.
+///
+/// Today and the month share the top row; everything ever recorded gets a
+/// line of its own underneath. Three columns would have fitted on paper
+/// and not on a 320-wide phone -- the figures would have shrunk to make
+/// room, and the two that are read daily would have paid for the one that
+/// is glanced at. A full-width line also suits the all-time figure, which
+/// is the longest number on the card.
 class SummaryCard extends StatelessWidget {
   final double todayExpenseTotal;
   final double todayIncomeTotal;
   final double monthExpenseTotal;
   final double monthIncomeTotal;
+  final double allExpenseTotal;
+  final double allIncomeTotal;
   final AppCurrency currency;
 
   /// True when [currency] differs from the currency these totals were
@@ -29,6 +38,8 @@ class SummaryCard extends StatelessWidget {
     required this.todayIncomeTotal,
     required this.monthExpenseTotal,
     required this.monthIncomeTotal,
+    required this.allExpenseTotal,
+    required this.allIncomeTotal,
     required this.currency,
     this.isApproximate = false,
   });
@@ -128,43 +139,54 @@ class SummaryCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _SummaryItem(
-                        label: 'СЕГОДНЯ',
-                        expenseTotal: todayExpenseTotal,
-                        incomeTotal: todayIncomeTotal,
-                        currency: currency,
-                        isApproximate: isApproximate,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _SummaryItem(
+                            label: 'СЕГОДНЯ',
+                            expenseTotal: todayExpenseTotal,
+                            incomeTotal: todayIncomeTotal,
+                            currency: currency,
+                            isApproximate: isApproximate,
+                          ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 92,
+                          margin: const EdgeInsets.symmetric(horizontal: 18),
+                          decoration: BoxDecoration(
+                            gradient: _rule(context, Axis.vertical),
+                          ),
+                        ),
+                        Expanded(
+                          child: _SummaryItem(
+                            label: 'ЗА МЕСЯЦ',
+                            expenseTotal: monthExpenseTotal,
+                            incomeTotal: monthIncomeTotal,
+                            currency: currency,
+                            isApproximate: isApproximate,
+                          ),
+                        ),
+                      ],
                     ),
                     Container(
-                      width: 1,
-                      height: 92,
-                      margin: const EdgeInsets.symmetric(horizontal: 18),
+                      height: 1,
+                      margin: const EdgeInsets.fromLTRB(0, 18, 0, 16),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            heroForeground(context).withValues(alpha: 0),
-                            heroForeground(context).withValues(alpha: 0.16),
-                            heroForeground(context).withValues(alpha: 0),
-                          ],
-                        ),
+                        gradient: _rule(context, Axis.horizontal),
                       ),
                     ),
-                    Expanded(
-                      child: _SummaryItem(
-                        label: 'ЗА МЕСЯЦ',
-                        expenseTotal: monthExpenseTotal,
-                        incomeTotal: monthIncomeTotal,
-                        currency: currency,
-                        isApproximate: isApproximate,
-                      ),
+                    _AllTimeStrip(
+                      expenseTotal: allExpenseTotal,
+                      incomeTotal: allIncomeTotal,
+                      currency: currency,
+                      isApproximate: isApproximate,
                     ),
                   ],
                 ),
@@ -173,6 +195,112 @@ class SummaryCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The hairline between the figures: lit in the middle, gone at both ends,
+/// so it reads as a fold in the glass rather than a drawn border.
+LinearGradient _rule(BuildContext context, Axis axis) => LinearGradient(
+      begin: axis == Axis.vertical ? Alignment.topCenter : Alignment.centerLeft,
+      end: axis == Axis.vertical
+          ? Alignment.bottomCenter
+          : Alignment.centerRight,
+      colors: [
+        heroForeground(context).withValues(alpha: 0),
+        heroForeground(context).withValues(alpha: 0.16),
+        heroForeground(context).withValues(alpha: 0),
+      ],
+    );
+
+TextStyle _labelStyle(BuildContext context) => TextStyle(
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 1.4,
+      color: goldFor(context),
+    );
+
+/// Everything ever recorded, laid across the card rather than stacked in a
+/// column of its own: the label and the net on one line, the two figures
+/// it is made of on the next.
+class _AllTimeStrip extends StatelessWidget {
+  final double expenseTotal;
+  final double incomeTotal;
+  final AppCurrency currency;
+  final bool isApproximate;
+
+  const _AllTimeStrip({
+    required this.expenseTotal,
+    required this.incomeTotal,
+    required this.currency,
+    this.isApproximate = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final net = incomeTotal - expenseTotal;
+    String approx(String amount) => isApproximate ? '≈ $amount' : amount;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Flexible(
+              child: Text(
+                'ЗА ВСЁ ВРЕМЯ',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: _labelStyle(context),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Set below the two headlines above it on purpose: this is the
+            // figure you glance at, not the one you check.
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  approx(
+                    net >= 0
+                        ? currency.format.format(net)
+                        : '−${currency.format.format(net.abs())}',
+                  ),
+                  maxLines: 1,
+                  softWrap: false,
+                  style: moneyStyle(
+                    size: 19,
+                    weight: FontWeight.w300,
+                    color: heroForeground(context),
+                    letterSpacing: -0.4,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _Leg(
+                color: incomeColor(context),
+                amount: approx('+${currency.format.format(incomeTotal)}'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _Leg(
+                color: expenseColor(context),
+                amount: approx('−${currency.format.format(expenseTotal)}'),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -205,12 +333,7 @@ class _SummaryItem extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.4,
-            color: goldFor(context),
-          ),
+          style: _labelStyle(context),
         ),
         const SizedBox(height: 12),
         FittedBox(
