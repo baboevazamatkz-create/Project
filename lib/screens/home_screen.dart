@@ -943,10 +943,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   'исправить',
                               child: FloatingActionButton.small(
                                 heroTag: 'scan_receipt',
-                                backgroundColor:
-                                    goldFor(context).withValues(alpha: 0.16),
+                                // Solid, on a rim, with a shadow under it.
+                                // It was a champagne wash at 16% over
+                                // whatever the list happened to be showing,
+                                // which is another way of saying it was
+                                // whatever the list happened to be showing:
+                                // against a pale row it disappeared. It
+                                // stays quieter than the two beside it by
+                                // wearing a champagne wash blended into
+                                // the sheet's own surface rather than a
+                                // colour of its own -- blended rather than
+                                // laid over, because over a row that
+                                // happens to be the same near-white the
+                                // sheet is, a translucent tint is no tint
+                                // at all.
+                                backgroundColor: Color.alphaBlend(
+                                  goldFor(context).withValues(alpha: 0.14),
+                                  sheetSurface(context),
+                                ),
                                 foregroundColor: goldFor(context),
-                                elevation: 0,
+                                elevation: 3,
+                                shape: CircleBorder(
+                                  side: BorderSide(
+                                    color: goldFor(context)
+                                        .withValues(alpha: 0.45),
+                                  ),
+                                ),
                                 onPressed: () =>
                                     _openScanner(expenses, currency),
                                 tooltip: 'Распознать чек или скриншот — ИИ',
