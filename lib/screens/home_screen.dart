@@ -886,11 +886,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       onPressed:
                           _switcherLoading ? null : _showHouseholdSwitcher,
                       icon: _switcherLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 18,
                               height: 18,
+                              // backgroundColor keeps a full ring on
+                              // screen at every frame -- without it, the
+                              // moving arc spends part of its cycle as a
+                              // short stray dash rather than a circle.
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
+                                backgroundColor:
+                                    goldFor(context).withValues(alpha: 0.16),
+                                color: goldFor(context),
                               ),
                             )
                           : const Icon(Icons.people_alt_outlined),
@@ -1030,7 +1037,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               body: AppBackgroundPattern(
                 child: ReadableWidth(
                   child: !snapshot.hasData
-                      ? const Center(child: CircularProgressIndicator())
+                      ? Center(
+                          // backgroundColor keeps a full ring on screen at
+                          // every frame -- without it, the moving arc
+                          // spends part of its cycle as a short stray dash
+                          // rather than a circle.
+                          child: CircularProgressIndicator(
+                            backgroundColor:
+                                goldFor(context).withValues(alpha: 0.16),
+                            color: goldFor(context),
+                          ),
+                        )
                       // The totals stay put and only the history moves: the
                       // card is the one thing on this screen you want to be
                       // able to read while scrolling through everything else.
