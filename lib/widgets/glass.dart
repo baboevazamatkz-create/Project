@@ -102,7 +102,14 @@ class GlassSheet extends StatelessWidget {
             ),
           ),
         ),
-        child: child,
+        // Paints nothing of its own (transparency), but gives whatever
+        // sheet content needs a Material ancestor -- a ListTile, a
+        // Checkbox -- one bounded to the sheet itself. Without it, such a
+        // widget reaches past this DecoratedBox for the nearest Material
+        // further up the tree, and paints its background and ink splashes
+        // there instead: outside this sheet's rounded corners, on
+        // whatever the app happened to be showing under it.
+        child: Material(type: MaterialType.transparency, child: child),
       ),
     );
   }

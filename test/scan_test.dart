@@ -14,6 +14,7 @@ import 'package:expense_tracker/models/expense.dart';
 import 'package:expense_tracker/models/expense_category.dart';
 import 'package:expense_tracker/models/scanned_transaction.dart';
 import 'package:expense_tracker/models/transaction_type.dart';
+import 'package:expense_tracker/screens/scan_flow.dart';
 import 'package:expense_tracker/theme.dart';
 import 'package:expense_tracker/widgets/scan_review_sheet.dart';
 
@@ -311,6 +312,56 @@ void main() {
         ),
         throwsA(isA<ScanException>()),
       );
+    });
+  });
+
+  group('The flow', () {
+    testWidgets('drops focus from whatever field was last typed into',
+        (tester) async {
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
+      final flow = ScanFlow(
+        pickImages: (_) async => [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(Brightness.light),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Column(
+                children: [
+                  TextField(focusNode: focusNode, autofocus: true),
+                  ElevatedButton(
+                    onPressed: () => flow.run(
+                      context,
+                      currency: AppCurrency.rub,
+                      existing: const [],
+                      onAdd: (_) async {},
+                    ),
+                    child: const Text('scan'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(focusNode.hasFocus, isTrue);
+
+      await tester.tap(find.text('scan'));
+      await tester.pump();
+
+      // Dropped as soon as the flow starts, before the source sheet even
+      // finishes animating in -- a lingering focused field is what leaves
+      // the browser's own hidden input, and whatever decoration it
+      // carries, sitting at its old position.
+      expect(focusNode.hasFocus, isFalse);
+
+      // Let the sheet's animation and the picker's empty result settle so
+      // the test does not leave a pending timer behind.
+      await tester.pumpAndSettle();
     });
   });
 

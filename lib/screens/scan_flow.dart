@@ -34,6 +34,14 @@ class ScanFlow {
     required List<Expense> existing,
     required Future<void> Function(List<Expense> expenses) onAdd,
   }) async {
+    // Drops focus from whatever field was last typed into -- adding an
+    // expense, naming the budget. On the web this also blurs the hidden
+    // input element Flutter keeps around for IME support; left focused,
+    // some Android browsers keep drawing that field's own spellcheck or
+    // autocomplete underline at its last position, which can land right
+    // on top of text this flow draws over it.
+    FocusScope.of(context).unfocus();
+
     final source = await _askSource(context);
     if (source == null || !context.mounted) return;
 
