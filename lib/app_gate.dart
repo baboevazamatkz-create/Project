@@ -122,8 +122,13 @@ class _AppGateState extends State<AppGate> {
                 SizedBox(
                   width: 22,
                   height: 22,
+                  // backgroundColor draws the full ring, not just the
+                  // moving arc -- without it, an indeterminate spinner
+                  // spends part of its cycle as a short stray dash rather
+                  // than a circle with a bright segment sweeping round it.
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
+                    backgroundColor: goldFor(context).withValues(alpha: 0.16),
                     color: goldFor(context),
                   ),
                 ),

@@ -7,6 +7,7 @@ import '../models/currency.dart';
 import '../models/expense.dart';
 import '../models/scanned_transaction.dart';
 import '../theme.dart';
+import '../widgets/ai_scan_icon.dart';
 import '../widgets/glass.dart';
 import '../widgets/scan_review_sheet.dart';
 
@@ -161,18 +162,38 @@ class ScanFlow {
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                width: 26,
-                height: 26,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: goldFor(context),
+                width: 34,
+                height: 34,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // A ring with no track behind it is only ever the
+                    // moving arc, and an indeterminate spinner spends part
+                    // of its cycle with that arc a few degrees long --
+                    // which reads not as a stalled circle but as a short
+                    // stray gold dash. The track keeps a full ring on
+                    // screen at every frame, so what moves around it is
+                    // unmistakably a spinner.
+                    CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      backgroundColor: goldFor(context).withValues(alpha: 0.16),
+                      color: goldFor(context),
+                    ),
+                    // The scanner's own mark at the centre, rather than an
+                    // empty ring: this dialog is the one moment the app
+                    // asks you to wait on the scanner specifically, and
+                    // nothing about a bare spinner says which of the app's
+                    // several loading states this one is.
+                    AiScanIcon(size: 15, color: goldFor(context)),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               Text(
                 'Читаю снимок…',
                 style: TextStyle(
                   fontSize: 14,
+                  fontWeight: FontWeight.w500,
                   color: accentForeground(context),
                 ),
               ),
