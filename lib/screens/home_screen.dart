@@ -586,12 +586,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// no business sitting a few millimetres from the buttons people press
   /// several times a day.
   Widget _clearButton() {
-    // Same button as the two in the opposite corner -- a filled circle at
-    // the same alpha -- just red and a size down, because it is the one
-    // you should reach for least.
+    // Same button as the ones in the opposite corner -- a filled circle at
+    // the same fill opacity -- just red and a size down, because it is the
+    // one you should reach for least.
     return FloatingActionButton.small(
       heroTag: 'clear_budget',
-      backgroundColor: expenseColor(context).withValues(alpha: 0.88),
+      backgroundColor: expenseColor(context).withValues(alpha: kFabFillOpacity),
       foregroundColor: const Color(0xFFF6F2EA),
       onPressed: _confirmClearAll,
       tooltip: 'Очистить бюджет',
