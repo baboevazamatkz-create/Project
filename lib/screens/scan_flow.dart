@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../data/scan_service.dart';
@@ -157,58 +158,18 @@ class ScanFlow {
       );
 
   void _showProgress(BuildContext context) {
+    // Spoken once, rather than left as a standing label on the text below:
+    // see the note on ExcludeSemantics inside ScanProgressContent for why.
+    SemanticsService.sendAnnouncement(
+      View.of(context),
+      'Читаю снимок…',
+      Directionality.of(context),
+    );
+
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Center(
-        child: GlassPanel(
-          radius: 20,
-          blur: 8,
-          elevated: true,
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 34,
-                height: 34,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // A ring with no track behind it is only ever the
-                    // moving arc, and an indeterminate spinner spends part
-                    // of its cycle with that arc a few degrees long --
-                    // which reads not as a stalled circle but as a short
-                    // stray gold dash. The track keeps a full ring on
-                    // screen at every frame, so what moves around it is
-                    // unmistakably a spinner.
-                    CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      backgroundColor: goldFor(context).withValues(alpha: 0.16),
-                      color: goldFor(context),
-                    ),
-                    // The scanner's own mark at the centre, rather than an
-                    // empty ring: this dialog is the one moment the app
-                    // asks you to wait on the scanner specifically, and
-                    // nothing about a bare spinner says which of the app's
-                    // several loading states this one is.
-                    AiScanIcon(size: 15, color: goldFor(context)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Читаю снимок…',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: accentForeground(context),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (context) => const Center(child: ScanProgressContent()),
     );
   }
 
@@ -216,6 +177,84 @@ class ScanFlow {
     ScaffoldMessenger.of(context)
       ..removeCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+/// The "Читаю снимок…" dialog's contents, pulled out to its own widget so
+/// a test can pump it directly rather than driving the whole
+/// pick-tile-upload sequence just to reach it.
+@visibleForTesting
+class ScanProgressContent extends StatelessWidget {
+  const ScanProgressContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPanel(
+      radius: 20,
+      blur: 8,
+      elevated: true,
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 34,
+            height: 34,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // A ring with no track behind it is only ever the moving
+                // arc, and an indeterminate spinner spends part of its
+                // cycle with that arc a few degrees long -- which reads
+                // not as a stalled circle but as a short stray gold dash.
+                // The track keeps a full ring on screen at every frame, so
+                // what moves around it is unmistakably a spinner.
+                CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  backgroundColor: goldFor(context).withValues(alpha: 0.16),
+                  color: goldFor(context),
+                ),
+                // The scanner's own mark at the centre, rather than an
+                // empty ring: this dialog is the one moment the app asks
+                // you to wait on the scanner specifically, and nothing
+                // about a bare spinner says which of the app's several
+                // loading states this one is.
+                AiScanIcon(size: 15, color: goldFor(context)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          // Flutter gives every piece of text its own touch-exploration
+          // target on the web -- an absolutely positioned, hit-testable DOM
+          // node sitting exactly over the glyphs it labels, there so a
+          // screen reader's touch model can find it. On at least one
+          // Android browser (Yandex, reported against this dialog),
+          // something reads that node as a fillable field and draws its
+          // own autocomplete-style underline across it, independent of
+          // anything this app paints. Confirmed by rebuilding this exact
+          // dialog as a standalone web build and forcing Flutter's
+          // accessibility bridge open in a real browser: the node is a
+          // transparent, absolutely positioned, hit-testable <span> sized
+          // to the text, sitting under it -- and it disappears once this
+          // widget is wrapped in ExcludeSemantics.
+          //
+          // SemanticsService.sendAnnouncement, called once when this
+          // dialog opens (see ScanFlow._showProgress), still speaks the
+          // message for a screen reader, through a channel with no
+          // standing node to misread.
+          ExcludeSemantics(
+            child: Text(
+              'Читаю снимок…',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: accentForeground(context),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

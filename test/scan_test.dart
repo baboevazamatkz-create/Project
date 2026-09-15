@@ -363,6 +363,32 @@ void main() {
       // the test does not leave a pending timer behind.
       await tester.pumpAndSettle();
     });
+
+    testWidgets(
+        'the loading message has no touch-exploration target for a '
+        'browser to mistake for a form field', (tester) async {
+      final handle = tester.ensureSemantics();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(Brightness.light),
+          home: const Scaffold(
+            body: Center(child: ScanProgressContent()),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('Читаю снимок…'), findsOneWidget);
+      // On the web this is the node a browser found and drew its own
+      // underline on, reported against Yandex on Android -- ExcludeSemantics
+      // is what removes it while SemanticsService.sendAnnouncement (called
+      // from ScanFlow, not exercised by this widget alone) still speaks the
+      // message.
+      expect(find.bySemanticsLabel('Читаю снимок…'), findsNothing);
+
+      handle.dispose();
+    });
   });
 
   group('Preparing a snapshot', () {
