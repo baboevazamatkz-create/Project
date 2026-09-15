@@ -32,6 +32,13 @@ import 'stats_screen.dart';
 
 final _monthDividerFormat = DateFormat('LLLL', 'ru');
 
+/// How solid the three bottom-row buttons -- scan, expense, income -- sit
+/// over the list behind them. One figure for all three rather than each
+/// button choosing its own: they read as a set, so a difference in fill
+/// opacity between them shows up as an inconsistency even when no single
+/// button looks wrong on its own.
+const double kFabFillOpacity = 0.82;
+
 /// "Сентябрь" for the current year, "Сентябрь 2025" once it isn't -- the
 /// label on a divider marking where one month's entries end and an older
 /// month's begin in the chronological list. Not private, so it can be
@@ -943,30 +950,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   'исправить',
                               child: FloatingActionButton.small(
                                 heroTag: 'scan_receipt',
-                                // Solid, on a rim, with a shadow under it.
-                                // It was a champagne wash at 16% over
-                                // whatever the list happened to be showing,
-                                // which is another way of saying it was
-                                // whatever the list happened to be showing:
-                                // against a pale row it disappeared. It
-                                // stays quieter than the two beside it by
-                                // wearing a champagne wash blended into
-                                // the sheet's own surface rather than a
-                                // colour of its own -- blended rather than
-                                // laid over, because over a row that
-                                // happens to be the same near-white the
-                                // sheet is, a translucent tint is no tint
-                                // at all.
+                                // A champagne wash blended into the
+                                // sheet's own surface first -- blended
+                                // rather than laid over, because over a
+                                // row that happens to be the same
+                                // near-white the sheet is, a translucent
+                                // tint of the surface on the surface is no
+                                // tint at all. That gives it a colour with
+                                // real contrast to blend *from*; the same
+                                // fixed translucency as its two neighbours
+                                // is then applied on top of it, so all
+                                // three buttons fade into the list behind
+                                // them by the same amount.
                                 backgroundColor: Color.alphaBlend(
                                   goldFor(context).withValues(alpha: 0.14),
                                   sheetSurface(context),
-                                ),
+                                ).withValues(alpha: kFabFillOpacity),
                                 foregroundColor: goldFor(context),
                                 elevation: 3,
                                 shape: CircleBorder(
                                   side: BorderSide(
                                     color: goldFor(context)
-                                        .withValues(alpha: 0.45),
+                                        .withValues(alpha: 0.55),
                                   ),
                                 ),
                                 onPressed: () =>
@@ -991,7 +996,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           Brightness.dark
                                       ? kChampagne
                                       : kAccentColor)
-                                  .withValues(alpha: 0.88),
+                                  .withValues(alpha: kFabFillOpacity),
                               onPressed: () => _openAddSheet(
                                   TransactionType.expense, currency),
                               tooltip: 'Добавить расход',
@@ -1007,8 +1012,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 'Нажмите, чтобы записать поступление денег',
                             child: FloatingActionButton(
                               heroTag: 'add_income',
-                              backgroundColor:
-                                  incomeColor(context).withValues(alpha: 0.88),
+                              backgroundColor: incomeColor(context)
+                                  .withValues(alpha: kFabFillOpacity),
                               foregroundColor: const Color(0xFFF6F2EA),
                               onPressed: () => _openAddSheet(
                                   TransactionType.income, currency),
