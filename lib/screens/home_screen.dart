@@ -1085,63 +1085,77 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 20,
                                 8,
                               ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: tourStep(
-                                      context,
-                                      tourKey: _summaryCardKey,
-                                      title: 'Итоги',
-                                      description: 'Сколько потрачено и '
-                                          'заработано сегодня, за месяц и за '
-                                          'всё время — видно, пока листаете '
-                                          'список',
-                                      targetShapeBorder:
-                                          const RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(24),
+                              // Column hands a non-Expanded child unbounded
+                              // height, and a Row given unbounded height
+                              // asserts the moment it tries to stretch its
+                              // children to match it. IntrinsicHeight reads
+                              // each child's own natural height instead of
+                              // relying on the incoming constraint, so the
+                              // advice tab can still match the card's height
+                              // without either of them needing a fixed one.
+                              child: IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child: tourStep(
+                                        context,
+                                        tourKey: _summaryCardKey,
+                                        title: 'Итоги',
+                                        description: 'Сколько потрачено и '
+                                            'заработано сегодня, за месяц и за '
+                                            'всё время — видно, пока листаете '
+                                            'список',
+                                        targetShapeBorder:
+                                            const RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.all(
+                                            Radius.circular(24),
+                                          ),
                                         ),
-                                      ),
-                                      child: SummaryCard(
-                                        todayExpenseTotal:
-                                            displayTotals.todayExpense,
-                                        todayIncomeTotal:
-                                            displayTotals.todayIncome,
-                                        monthExpenseTotal:
-                                            displayTotals.monthExpense,
-                                        monthIncomeTotal:
-                                            displayTotals.monthIncome,
-                                        allExpenseTotal:
-                                            displayTotals.allExpense,
-                                        allIncomeTotal: displayTotals.allIncome,
-                                        currency: displayCurrency,
-                                        isApproximate: isConverted,
-                                      ),
-                                    ),
-                                  ),
-                                  if (_adviceEnabled) ...[
-                                    const SizedBox(width: 10),
-                                    tourStep(
-                                      context,
-                                      tourKey: _adviceKey,
-                                      title: 'Советы по расходам',
-                                      description: 'Искусственный интеллект '
-                                          'разбирает траты за месяц и '
-                                          'подсказывает, на чём можно '
-                                          'сэкономить',
-                                      targetShapeBorder: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(22),
-                                      ),
-                                      child: AdviceTabButton(
-                                        onTap: () => _openAdvice(
-                                          expenses,
-                                          displayCurrency,
+                                        child: SummaryCard(
+                                          todayExpenseTotal:
+                                              displayTotals.todayExpense,
+                                          todayIncomeTotal:
+                                              displayTotals.todayIncome,
+                                          monthExpenseTotal:
+                                              displayTotals.monthExpense,
+                                          monthIncomeTotal:
+                                              displayTotals.monthIncome,
+                                          allExpenseTotal:
+                                              displayTotals.allExpense,
+                                          allIncomeTotal:
+                                              displayTotals.allIncome,
+                                          currency: displayCurrency,
+                                          isApproximate: isConverted,
                                         ),
                                       ),
                                     ),
+                                    if (_adviceEnabled) ...[
+                                      const SizedBox(width: 10),
+                                      tourStep(
+                                        context,
+                                        tourKey: _adviceKey,
+                                        title: 'Советы по расходам',
+                                        description: 'Искусственный интеллект '
+                                            'разбирает траты за месяц и '
+                                            'подсказывает, на чём можно '
+                                            'сэкономить',
+                                        targetShapeBorder:
+                                            RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(22),
+                                        ),
+                                        child: AdviceTabButton(
+                                          onTap: () => _openAdvice(
+                                            expenses,
+                                            displayCurrency,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
                             ),
                             Expanded(
