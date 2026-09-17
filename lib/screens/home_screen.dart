@@ -9,6 +9,7 @@ import '../data/expense_repository.dart';
 import '../data/widget_bridge.dart';
 import '../data/widget_launch.dart';
 import '../data/household_settings_repository.dart';
+import '../data/advice_service.dart';
 import '../data/scan_service.dart';
 import '../models/category_group.dart';
 import '../models/currency.dart';
@@ -17,6 +18,7 @@ import '../models/expense_category.dart';
 import '../models/household.dart';
 import '../models/transaction_type.dart';
 import '../widgets/add_expense_sheet.dart';
+import '../widgets/advice_tab_button.dart';
 import '../widgets/ai_scan_icon.dart';
 import '../widgets/app_background_pattern.dart';
 import '../widgets/expense_tile.dart';
@@ -27,6 +29,7 @@ import '../theme.dart';
 import '../theme_mode_controller.dart';
 import '../widgets/summary_card.dart';
 import '../widgets/tour_step.dart';
+import 'advice_screen.dart';
 import 'scan_flow.dart';
 import 'stats_screen.dart';
 
@@ -79,8 +82,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // Bumped whenever the tour changes: anyone who had seen the old steps
   // would otherwise never be shown the controls added since. v3 added the
-  // scanner, v4 the list row and the scanner's own wording.
-  static const _tourSeenKey = 'onboarding_tour_seen_v4';
+  // scanner, v4 the list row and the scanner's own wording, v5 the advice
+  // tab.
+  static const _tourSeenKey = 'onboarding_tour_seen_v5';
 
   final _repository = ExpenseRepository();
   final _scanFlow = ScanFlow();
@@ -89,6 +93,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// none set there is nothing behind the button, so it is not shown at all
   /// -- and the tour skips its step rather than pointing at a gap.
   bool get _scanEnabled => ScanService.isConfigured;
+
+  /// Same worker, same address as the scanner -- with none set there is
+  /// nothing behind this button either, so it stays hidden rather than
+  /// opening a screen that can only fail.
+  bool get _adviceEnabled => AdviceService.isConfigured;
   final _settingsRepository = HouseholdSettingsRepository();
 
   final _incomeFabKey = GlobalKey();
@@ -96,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _rowKey = GlobalKey();
   final _expenseFabKey = GlobalKey();
   final _summaryCardKey = GlobalKey();
+  final _adviceKey = GlobalKey();
   final _clearKey = GlobalKey();
   final _themeKey = GlobalKey();
   final _viewModeKey = GlobalKey();
@@ -246,6 +256,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _showcase.startShowCase(
       [
         _summaryCardKey,
+        if (_adviceEnabled) _adviceKey,
         if (_tourHasRows) _rowKey,
         _expenseFabKey,
         _incomeFabKey,
@@ -382,6 +393,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => StatsScreen(
+          householdCode: widget.household.code,
+          currency: currency,
+          expenses: expenses,
+        ),
+      ),
+    );
+  }
+
+  void _openAdvice(List<Expense> expenses, AppCurrency currency) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AdviceScreen(
           householdCode: widget.household.code,
           currency: currency,
           expenses: expenses,
@@ -1062,28 +1085,63 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 20,
                                 8,
                               ),
-                              child: tourStep(
-                                context,
-                                tourKey: _summaryCardKey,
-                                title: 'Итоги',
-                                description: 'Сколько потрачено и '
-                                    'заработано сегодня, за месяц и за всё '
-                                    'время — видно, пока листаете список',
-                                targetShapeBorder: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(24),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    child: tourStep(
+                                      context,
+                                      tourKey: _summaryCardKey,
+                                      title: 'Итоги',
+                                      description: 'Сколько потрачено и '
+                                          'заработано сегодня, за месяц и за '
+                                          'всё время — видно, пока листаете '
+                                          'список',
+                                      targetShapeBorder:
+                                          const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.all(
+                                          Radius.circular(24),
+                                        ),
+                                      ),
+                                      child: SummaryCard(
+                                        todayExpenseTotal:
+                                            displayTotals.todayExpense,
+                                        todayIncomeTotal:
+                                            displayTotals.todayIncome,
+                                        monthExpenseTotal:
+                                            displayTotals.monthExpense,
+                                        monthIncomeTotal:
+                                            displayTotals.monthIncome,
+                                        allExpenseTotal:
+                                            displayTotals.allExpense,
+                                        allIncomeTotal: displayTotals.allIncome,
+                                        currency: displayCurrency,
+                                        isApproximate: isConverted,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                child: SummaryCard(
-                                  todayExpenseTotal: displayTotals.todayExpense,
-                                  todayIncomeTotal: displayTotals.todayIncome,
-                                  monthExpenseTotal: displayTotals.monthExpense,
-                                  monthIncomeTotal: displayTotals.monthIncome,
-                                  allExpenseTotal: displayTotals.allExpense,
-                                  allIncomeTotal: displayTotals.allIncome,
-                                  currency: displayCurrency,
-                                  isApproximate: isConverted,
-                                ),
+                                  if (_adviceEnabled) ...[
+                                    const SizedBox(width: 10),
+                                    tourStep(
+                                      context,
+                                      tourKey: _adviceKey,
+                                      title: 'Советы по расходам',
+                                      description: 'Искусственный интеллект '
+                                          'разбирает траты за месяц и '
+                                          'подсказывает, на чём можно '
+                                          'сэкономить',
+                                      targetShapeBorder: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(22),
+                                      ),
+                                      child: AdviceTabButton(
+                                        onTap: () => _openAdvice(
+                                          expenses,
+                                          displayCurrency,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                             Expanded(
