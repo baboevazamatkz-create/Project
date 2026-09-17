@@ -19,7 +19,7 @@ class AdviceTabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 60,
+      height: 50,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
@@ -54,15 +54,15 @@ class AdviceTabButton extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(gradient: heroGradientFor(context)),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
                     Icon(
                       Icons.auto_awesome_rounded,
-                      size: 20,
+                      size: 18,
                       color: goldFor(context),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
