@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 
-/// The vertical tab standing beside [SummaryCard]: the totals card states
-/// what happened, this is the one thing on that row offering to explain it.
+/// The bar under [SummaryCard]: the totals card states what happened, this
+/// is the one thing on that screen offering to explain it.
 ///
 /// Built to read as the summary card's own edge rather than a separate
-/// button -- same rim gradient, same corner radius, same shadow -- so the
-/// two look like one object with a fold in it, not a card and a stray icon
-/// beside it. [height] is passed in explicitly and the widget is given the
-/// card's own height at the call site (a `Row` with `CrossAxisAlignment
-/// .stretch` sizes it from the sibling automatically); a plain [SizedBox]
-/// height would have to duplicate the card's own sizing logic instead.
+/// control -- same rim gradient, same corner radius, same shadow -- so the
+/// two read as one object rather than a card and a stray button under it.
+/// Full width and a fixed height of its own, so it drops into a plain
+/// Column the same way SummaryCard does, with no shared-height trick
+/// between the two needed.
 class AdviceTabButton extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -20,9 +19,9 @@ class AdviceTabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 44,
+      height: 60,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -47,37 +46,56 @@ class AdviceTabButton extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(1),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(21),
+        borderRadius: BorderRadius.circular(19),
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
             onTap: onTap,
             child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: heroGradientFor(context),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 18,
-                    color: goldFor(context),
-                  ),
-                  const SizedBox(height: 10),
-                  RotatedBox(
-                    quarterTurns: 3,
-                    child: Text(
-                      'СОВЕТЫ',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 2.2,
-                        color: heroForeground(context),
+              decoration: BoxDecoration(gradient: heroGradientFor(context)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 20,
+                      color: goldFor(context),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Советы по расходам',
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                              color: heroForeground(context),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'ИИ разберёт траты и подскажет, на чём сэкономить',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: heroForeground(context)
+                                  .withValues(alpha: 0.62),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: heroForeground(context).withValues(alpha: 0.5),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
