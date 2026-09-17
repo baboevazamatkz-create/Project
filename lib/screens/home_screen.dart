@@ -1122,7 +1122,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     ),
                                   ),
                                   if (_adviceEnabled) ...[
-                                    const SizedBox(height: 10),
+                                    const SizedBox(height: 6),
                                     tourStep(
                                       context,
                                       tourKey: _adviceKey,
