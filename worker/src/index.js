@@ -1,12 +1,14 @@
-// Разбор чеков и банковских скриншотов.
-//
-// Приложение присылает сюда снимок, воркер спрашивает у модели, что на нём
-// изображено, и возвращает список операций. Ключ Anthropic хранится
-// секретом воркера: положить его в клиент нельзя -- и веб-сборку, и APK
-// можно разобрать и достать оттуда что угодно.
+// Два дела на одном воркере: разбор чеков и банковских скриншотов
+// (POST на корень) и разбор трат с советами по оптимизации (POST на
+// /advice). Обоим приложение присылает данные, воркер спрашивает у
+// модели и возвращает результат. Ключ Anthropic хранится секретом
+// воркера: положить его в клиент нельзя -- и веб-сборку, и APK можно
+// разобрать и достать оттуда что угодно.
 //
 // Единственный пропуск -- токен Firebase того же проекта, что и у
-// приложения. Проверяется подпись, издатель, адресат и срок.
+// приложения. Проверяется подпись, издатель, адресат и срок. Оба
+// маршрута делят один суточный лимит на пользователя: это одна и та же
+// защита от чужого счёта, не два разных бюджета.
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -355,6 +357,267 @@ async function askModel(env, images, today, currency) {
   return block.input || {};
 }
 
+// --- разбор трат и советы -----------------------------------------------
+
+const SEVERITIES = ['info', 'warning'];
+const VERDICTS = ['positive', 'neutral', 'concerning'];
+// 'general' rather than reusing 'other': 'other' already means "a spending
+// category the model couldn't place", and a tip needs a way to say
+// "this isn't about one category at all" without colliding with that.
+const ADVICE_CATEGORIES = [...CATEGORIES, 'general'];
+
+const ADVICE_TOOL = {
+  name: 'record_advice',
+  description:
+    'Записать разбор трат за месяц и рекомендации по оптимизации.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      verdict: {
+        type: 'string',
+        enum: VERDICTS,
+        description:
+          'Общее впечатление от месяца: positive -- расходы под контролем '
+          + 'или сократились; neutral -- ничего примечательного; '
+          + 'concerning -- расходы заметно выросли или лимит превышен.',
+      },
+      headline: {
+        type: 'string',
+        description:
+          'Один ёмкий вывод, по-русски, с конкретными цифрами из данных '
+          + '(суммой или процентом). Не длиннее 140 символов. Не начинайте '
+          + 'с "В этом месяце" -- сразу по существу.',
+      },
+      tips: {
+        type: 'array',
+        description:
+          'От двух до пяти пунктов. Самое важное -- первым. Если данных '
+          + 'мало, дайте меньше пунктов и не выдумывайте лишнее.',
+        items: {
+          type: 'object',
+          properties: {
+            category: {
+              type: 'string',
+              enum: ADVICE_CATEGORIES,
+              description:
+                'Категория, которой касается совет, или general, если '
+                + 'совет не про конкретную категорию.',
+            },
+            severity: {
+              type: 'string',
+              enum: SEVERITIES,
+              description:
+                'warning -- превышен заданный лимит или сумма выросла '
+                + 'резко (в полтора раза и больше); info -- всё остальное, '
+                + 'включая наблюдения без тревожного повода.',
+            },
+            title: {
+              type: 'string',
+              description:
+                'До 60 символов, без точки в конце. Суть одной фразой: '
+                + '"Такси съедает бюджет", а не "Совет по транспорту".',
+            },
+            detail: {
+              type: 'string',
+              description:
+                'Одно-два предложения. Обязательно с цифрой из данных. '
+                + 'Совет должен быть конкретным и выполнимым, а не общим '
+                + 'вроде "следите за тратами" -- это уже делает само '
+                + 'приложение.',
+            },
+          },
+          required: ['category', 'severity', 'title', 'detail'],
+        },
+      },
+    },
+    required: ['verdict', 'headline', 'tips'],
+  },
+};
+
+function adviceSystemPrompt(currency) {
+  return [
+    'Вы разбираете агрегированные траты за месяц в приложении для личного ',
+    'бюджета и даёте советы по оптимизации. Данные -- это суммы по ',
+    `категориям, без названий покупок и продавцов. Валюта: ${currency}.`,
+    '',
+    'Пишите по-русски, прямо и по-человечески, как знающий и слегка ',
+    'ироничный друг, а не как банковское приложение. Каждый совет должен ',
+    'опираться на конкретную цифру из данных и предлагать конкретное ',
+    'действие, а не общие слова вроде "ведите учёт" или "составьте план" -- ',
+    'учёт уже ведётся, это и есть эти данные.',
+    '',
+    'Сравнивайте этот месяц с прошлым, где это показательно. Если задан ',
+    'лимит по категории и он превышен или близок к превышению -- это ',
+    'всегда стоит упоминания. Если прошло мало дней месяца, учитывайте ',
+    'это: расходы за первую неделю сравнивайте по темпу, а не по итоговой ',
+    'сумме прошлого месяца целиком.',
+    '',
+    'Если данных мало или ничего примечательного нет -- так и скажите, ',
+    'нескольких честных пунктов лучше, чем натянутые. Ничего не ',
+    'выдумывайте: используйте только то, что действительно есть в данных.',
+  ].join('\n');
+}
+
+function clampAdvice(raw) {
+  const verdict = VERDICTS.includes(raw?.verdict) ? raw.verdict : 'neutral';
+  const headline = String(raw?.headline ?? '').trim().slice(0, 220);
+
+  const tips = [];
+  for (const item of Array.isArray(raw?.tips) ? raw.tips : []) {
+    const title = String(item?.title ?? '').trim().slice(0, 80);
+    const detail = String(item?.detail ?? '').trim().slice(0, 300);
+    if (!title || !detail) continue;
+    tips.push({
+      category: ADVICE_CATEGORIES.includes(item?.category)
+        ? item.category
+        : 'general',
+      severity: SEVERITIES.includes(item?.severity) ? item.severity : 'info',
+      title,
+      detail,
+    });
+    if (tips.length >= 6) break;
+  }
+
+  return { verdict, headline, tips };
+}
+
+async function askModelForAdvice(env, snapshot) {
+  const res = await fetch(ANTHROPIC_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': ANTHROPIC_VERSION,
+    },
+    body: JSON.stringify({
+      model: env.MODEL || 'claude-haiku-4-5-20251001',
+      max_tokens: 1536,
+      system: adviceSystemPrompt(snapshot.currency),
+      tools: [ADVICE_TOOL],
+      tool_choice: { type: 'tool', name: ADVICE_TOOL.name },
+      messages: [
+        {
+          role: 'user',
+          content:
+            'Вот траты за месяц. Разберите их и вызовите record_advice.\n\n'
+            + JSON.stringify(snapshot),
+        },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text();
+    console.error('anthropic advice', res.status, detail.slice(0, 500));
+    if (res.status === 429) {
+      throw new HttpError(429, 'Сервис разбора занят, попробуйте позже');
+    }
+    throw new HttpError(502, 'Не удалось разобрать траты');
+  }
+
+  const body = await res.json();
+  if (body.stop_reason === 'max_tokens') {
+    throw new HttpError(502, 'Не удалось разобрать траты');
+  }
+  const block = (body.content || []).find((b) => b.type === 'tool_use');
+  if (!block) throw new HttpError(502, 'Не удалось разобрать траты');
+  return block.input || {};
+}
+
+// Keeps the model looking at real numbers, not a payload full of noise: a
+// bad key or a huge nonsense value is stripped rather than forwarded and
+// blamed on the model's reading of it.
+function sanitizeMonth(raw) {
+  const income = Number(raw?.income);
+  const expense = Number(raw?.expense);
+  const categories = {};
+  const rawCategories = raw?.categories && typeof raw.categories === 'object'
+    ? raw.categories
+    : {};
+  for (const key of CATEGORIES) {
+    const entry = rawCategories[key];
+    const amount = Number(entry?.amount);
+    const count = Number(entry?.count);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    categories[key] = {
+      amount: Math.round(amount * 100) / 100,
+      count: Number.isFinite(count) && count > 0 ? Math.round(count) : 1,
+    };
+  }
+  return {
+    income: Number.isFinite(income) ? Math.max(0, Math.round(income * 100) / 100) : 0,
+    expense: Number.isFinite(expense) ? Math.max(0, Math.round(expense * 100) / 100) : 0,
+    categories,
+  };
+}
+
+function sanitizeSnapshot(payload) {
+  const currency = CURRENCIES.includes(payload.currency) ? payload.currency : 'rub';
+  const daysElapsed = Number(payload.daysElapsedInMonth);
+  const daysInMonth = Number(payload.daysInMonth);
+
+  const limits = {};
+  const rawLimits = payload.limits && typeof payload.limits === 'object'
+    ? payload.limits
+    : {};
+  for (const key of CATEGORIES) {
+    const value = Number(rawLimits[key]);
+    if (Number.isFinite(value) && value > 0) {
+      limits[key] = Math.round(value * 100) / 100;
+    }
+  }
+
+  return {
+    currency,
+    daysElapsedInMonth: Number.isFinite(daysElapsed)
+      ? Math.min(31, Math.max(0, Math.round(daysElapsed)))
+      : 1,
+    daysInMonth: Number.isFinite(daysInMonth)
+      ? Math.min(31, Math.max(1, Math.round(daysInMonth)))
+      : 30,
+    thisMonth: sanitizeMonth(payload.thisMonth),
+    lastMonth: sanitizeMonth(payload.lastMonth),
+    limits,
+  };
+}
+
+async function handleAdvice(request, env) {
+  if (!env.ANTHROPIC_API_KEY) {
+    throw new HttpError(500, 'Воркер не настроен: нет ключа ANTHROPIC_API_KEY');
+  }
+
+  const auth = request.headers.get('Authorization') || '';
+  if (!auth.startsWith('Bearer ')) throw new HttpError(401, 'Нужен вход в приложение');
+  const uid = await verifyIdToken(auth.slice(7).trim(), env.FIREBASE_PROJECT_ID);
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    throw new HttpError(400, 'Тело запроса не разобрано');
+  }
+
+  const snapshot = sanitizeSnapshot(payload);
+  const totalCount = CATEGORIES.reduce(
+    (sum, key) =>
+      sum
+      + (snapshot.thisMonth.categories[key]?.count || 0)
+      + (snapshot.lastMonth.categories[key]?.count || 0),
+    0,
+  );
+  // The app already screens for this, but the worker does not trust the
+  // client either: too little to say anything true about is a 422, not a
+  // model call spent confabulating a verdict from three data points.
+  if (totalCount < 3) {
+    throw new HttpError(422, 'Пока маловато записей для разбора');
+  }
+
+  await useQuota(env, uid);
+
+  const result = await askModelForAdvice(env, snapshot);
+  return json(clampAdvice(result));
+}
+
 // --- обработчик ---------------------------------------------------------
 
 async function handleScan(request, env) {
@@ -411,7 +674,8 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS });
     }
-    if (request.method === 'GET') {
+    const { pathname } = new URL(request.url);
+    if (request.method === 'GET' && (pathname === '/' || pathname === '')) {
       return new Response('solidus-scan ok\n', {
         headers: { 'Content-Type': 'text/plain; charset=utf-8', ...CORS },
       });
@@ -420,6 +684,13 @@ export default {
       return json({ error: 'Метод не поддерживается' }, 405);
     }
     try {
+      // Trailing slash tolerated: the client builds this by resolving
+      // 'advice' against an endpoint that itself may or may not end in
+      // one, and getting that exactly right on both ends is not worth
+      // the coupling.
+      if (pathname === '/advice' || pathname === '/advice/') {
+        return await handleAdvice(request, env);
+      }
       return await handleScan(request, env);
     } catch (error) {
       if (error instanceof HttpError) {
@@ -432,5 +703,15 @@ export default {
 };
 
 // Вынесено ради тестов на стороне приложения: форма ответа описана в
-// test/scan_contract_test.dart и должна совпадать с clampTransactions.
-export const __testing = { clampTransactions, CATEGORIES, CURRENCIES };
+// test/scan_test.dart и test/advice_test.dart, и должна совпадать с
+// clampTransactions и clampAdvice.
+export const __testing = {
+  clampTransactions,
+  clampAdvice,
+  sanitizeSnapshot,
+  CATEGORIES,
+  CURRENCIES,
+  ADVICE_CATEGORIES,
+  SEVERITIES,
+  VERDICTS,
+};
