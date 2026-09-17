@@ -14,6 +14,7 @@ import 'package:expense_tracker/models/spending_snapshot.dart';
 import 'package:expense_tracker/models/transaction_type.dart';
 import 'package:expense_tracker/theme.dart';
 import 'package:expense_tracker/widgets/advice_tab_button.dart';
+import 'package:expense_tracker/widgets/summary_card.dart';
 
 const _endpoint = 'https://scan.example.test';
 
@@ -387,6 +388,57 @@ void main() {
 
       await tester.tap(find.byType(AdviceTabButton));
       expect(tapped, isTrue);
+    });
+
+    testWidgets(
+        'sitting beside the summary card in an unbounded Column slot does '
+        'not blow up layout', (tester) async {
+      // Regression: the home screen places this row as a non-Expanded
+      // child of a Column, which hands it unbounded height -- and
+      // CrossAxisAlignment.stretch asserts the moment it tries to stretch
+      // a child to an infinite height. This reproduces that exact shape
+      // (IntrinsicHeight is what home_screen.dart relies on to avoid it)
+      // rather than testing AdviceTabButton in isolation, which never hit
+      // the bug because its harness gave it a fixed-height SizedBox.
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(Brightness.light),
+          home: Scaffold(
+            body: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Expanded(
+                          child: SummaryCard(
+                            todayExpenseTotal: 100,
+                            todayIncomeTotal: 0,
+                            monthExpenseTotal: 500,
+                            monthIncomeTotal: 1000,
+                            allExpenseTotal: 5000,
+                            allIncomeTotal: 8000,
+                            currency: AppCurrency.rub,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        AdviceTabButton(onTap: () {}),
+                      ],
+                    ),
+                  ),
+                ),
+                const Expanded(child: SizedBox.shrink()),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(SummaryCard), findsOneWidget);
+      expect(find.byType(AdviceTabButton), findsOneWidget);
     });
 
     testWidgets('survives the dark theme', (tester) async {
