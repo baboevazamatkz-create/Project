@@ -370,36 +370,33 @@ void main() {
   });
 
   group('The tab button', () {
-    testWidgets('reads "СОВЕТЫ" and reports a tap', (tester) async {
+    testWidgets('reads its label and reports a tap', (tester) async {
       var tapped = false;
       await tester.pumpWidget(
         MaterialApp(
           theme: buildAppTheme(Brightness.light),
           home: Scaffold(
-            body: SizedBox(
-              height: 160,
-              child: AdviceTabButton(onTap: () => tapped = true),
-            ),
+            body: AdviceTabButton(onTap: () => tapped = true),
           ),
         ),
       );
 
-      expect(find.text('СОВЕТЫ'), findsOneWidget);
+      expect(find.text('Советы по расходам'), findsOneWidget);
 
       await tester.tap(find.byType(AdviceTabButton));
       expect(tapped, isTrue);
     });
 
     testWidgets(
-        'sitting beside the summary card in an unbounded Column slot does '
-        'not blow up layout', (tester) async {
-      // Regression: the home screen places this row as a non-Expanded
-      // child of a Column, which hands it unbounded height -- and
-      // CrossAxisAlignment.stretch asserts the moment it tries to stretch
-      // a child to an infinite height. This reproduces that exact shape
-      // (IntrinsicHeight is what home_screen.dart relies on to avoid it)
-      // rather than testing AdviceTabButton in isolation, which never hit
-      // the bug because its harness gave it a fixed-height SizedBox.
+        'sitting full-width under the summary card, in a plain Column, '
+        'does not blow up layout', (tester) async {
+      // Regression guard for the shape home_screen.dart actually uses: a
+      // Column with SummaryCard, then this button, both full width. The
+      // earlier design sat the two side by side in a stretched Row, which
+      // (as a non-Expanded Column child, given unbounded height) crashed
+      // the whole screen in production -- moving to a stacked, full-width
+      // layout for both removes the shared-height trick that bug came from
+      // rather than working around it again.
       await tester.pumpWidget(
         MaterialApp(
           theme: buildAppTheme(Brightness.light),
@@ -408,25 +405,20 @@ void main() {
               children: [
                 Padding(
                   padding: const EdgeInsets.all(20),
-                  child: IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Expanded(
-                          child: SummaryCard(
-                            todayExpenseTotal: 100,
-                            todayIncomeTotal: 0,
-                            monthExpenseTotal: 500,
-                            monthIncomeTotal: 1000,
-                            allExpenseTotal: 5000,
-                            allIncomeTotal: 8000,
-                            currency: AppCurrency.rub,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        AdviceTabButton(onTap: () {}),
-                      ],
-                    ),
+                  child: Column(
+                    children: [
+                      const SummaryCard(
+                        todayExpenseTotal: 100,
+                        todayIncomeTotal: 0,
+                        monthExpenseTotal: 500,
+                        monthIncomeTotal: 1000,
+                        allExpenseTotal: 5000,
+                        allIncomeTotal: 8000,
+                        currency: AppCurrency.rub,
+                      ),
+                      const SizedBox(height: 10),
+                      AdviceTabButton(onTap: () {}),
+                    ],
                   ),
                 ),
                 const Expanded(child: SizedBox.shrink()),
@@ -446,10 +438,7 @@ void main() {
         MaterialApp(
           theme: buildAppTheme(Brightness.dark),
           home: Scaffold(
-            body: SizedBox(
-              height: 160,
-              child: AdviceTabButton(onTap: () {}),
-            ),
+            body: AdviceTabButton(onTap: () {}),
           ),
         ),
       );
