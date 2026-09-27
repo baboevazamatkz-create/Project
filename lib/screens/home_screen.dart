@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -155,6 +156,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late Stream<AppCurrency> _currencyStream;
   late Stream<List<Expense>> _expensesStream;
 
+  // A stalled Firestore listener -- the case that matters is a backgrounded
+  // mobile browser tab dropping its realtime connection -- would otherwise
+  // leave the indeterminate spinner below spinning forever. That is not
+  // just a bad look: an indeterminate CircularProgressIndicator keeps its
+  // AnimationController ticking, which keeps the web engine requesting a
+  // new frame every frame for as long as the tab stays open, burning CPU
+  // and battery in the background for no visible reason. This timer gives
+  // up on that first wait after a while and offers a retry instead.
+  Timer? _firstLoadTimer;
+  bool _firstLoadTimedOut = false;
+
   @override
   void initState() {
     super.initState();
@@ -190,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _listController.dispose();
     _scanFlow.dispose();
     _showcase.unregister();
+    _firstLoadTimer?.cancel();
     super.dispose();
   }
 
@@ -198,7 +211,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _currencyStream = _settingsRepository.watchCurrency(code);
     _expensesStream = _repository.watchExpenses(code);
     _displayCurrency = null;
+
+    _firstLoadTimedOut = false;
+    _firstLoadTimer?.cancel();
+    _firstLoadTimer = Timer(const Duration(seconds: 20), () {
+      if (mounted) setState(() => _firstLoadTimedOut = true);
+    });
   }
+
+  /// Drops the stalled listeners and opens fresh ones, which is the closest
+  /// thing to "reconnect" a Firestore stream offers from here.
+  void _retryFirstLoad() => setState(_subscribeToHousehold);
 
   /// Steps the currency-view toggle to the next currency: household's own
   /// (exact) -> the other two (converted) -> back to household's own.
@@ -836,6 +859,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               hasContent: snapshot.hasData,
               hasRows: expenses.isNotEmpty && !_groupedByCategory,
             );
+            // Real data arrived -- the wait that timer was guarding against
+            // is over, so it should not fire a stale "no connection" state
+            // a few seconds from now.
+            if (snapshot.hasData) _firstLoadTimer?.cancel();
             return Scaffold(
               // The list runs under the app bar so there is something for
               // the bar's frosting to actually blur.
@@ -1060,17 +1087,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               body: AppBackgroundPattern(
                 child: ReadableWidth(
                   child: !snapshot.hasData
-                      ? Center(
-                          // backgroundColor keeps a full ring on screen at
-                          // every frame -- without it, the moving arc
-                          // spends part of its cycle as a short stray dash
-                          // rather than a circle.
-                          child: CircularProgressIndicator(
-                            backgroundColor:
-                                goldFor(context).withValues(alpha: 0.16),
-                            color: goldFor(context),
-                          ),
-                        )
+                      ? (_firstLoadTimedOut
+                          ? _ConnectionTimedOut(onRetry: _retryFirstLoad)
+                          : Center(
+                              // backgroundColor keeps a full ring on screen
+                              // at every frame -- without it, the moving arc
+                              // spends part of its cycle as a short stray
+                              // dash rather than a circle.
+                              child: CircularProgressIndicator(
+                                backgroundColor:
+                                    goldFor(context).withValues(alpha: 0.16),
+                                color: goldFor(context),
+                              ),
+                            ))
                       // The totals stay put and only the history moves: the
                       // card is the one thing on this screen you want to be
                       // able to read while scrolling through everything else.
@@ -1323,6 +1352,53 @@ class _EmptyState extends StatelessWidget {
                     ?.color
                     ?.withValues(alpha: 0.6),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown in place of the initial spinner once the first Firestore snapshot
+/// has taken too long to arrive -- a stalled realtime connection, most
+/// often a mobile browser tab that lost it while backgrounded. Without
+/// this, the indeterminate spinner just keeps spinning: its animation
+/// never stops on its own, which keeps the web engine requesting a new
+/// frame forever and burns battery for as long as the tab stays open,
+/// with nothing on screen to explain why or a way to recover short of a
+/// manual reload.
+class _ConnectionTimedOut extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _ConnectionTimedOut({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 48,
+              color: goldFor(context).withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Не удаётся загрузить данные.\nПроверьте соединение',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: accentForeground(context).withValues(alpha: 0.75),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: onRetry,
+              child: const Text('Повторить'),
             ),
           ],
         ),

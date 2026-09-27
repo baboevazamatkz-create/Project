@@ -64,8 +64,17 @@ class _AdviceScreenState extends State<AdviceScreen> {
   String get _cacheKey => 'advice_cache_${widget.householdCode}';
 
   Future<SpendingSnapshot> _buildSnapshot() async {
-    final budgets =
-        await _budgetRepository.watchBudgets(widget.householdCode).first;
+    // Limits are the one piece of this snapshot that comes from a live
+    // Firestore listener rather than the fixed expense list already in
+    // hand -- and a stalled listener (a backgrounded tab losing its
+    // realtime connection, say) would otherwise leave this screen waiting
+    // forever with nothing to show for it but a spinner that never stops
+    // animating. Advice without limits is still useful, so a slow answer
+    // here degrades to "no limits" rather than hanging.
+    final budgets = await _budgetRepository
+        .watchBudgets(widget.householdCode)
+        .first
+        .timeout(const Duration(seconds: 15), onTimeout: () => const {});
     final limits = <ExpenseCategory, double>{
       for (final category in ExpenseCategory.values)
         if (BudgetRepository.budgetFor(budgets, category) != null)
