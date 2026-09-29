@@ -9,6 +9,10 @@
          permission. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Only for the voice assistant's microphone. Requested at runtime by
+         speech_to_text's own initialize() call, not eagerly on launch. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
     <application
         android:label="Solidus"
         android:name="${applicationName}"
@@ -52,6 +56,21 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/solidus_widget_info" />
+        </receiver>
+
+        <!-- The voice widget: a single button that opens MainActivity
+             directly (see SolidusVoiceWidgetProvider), so it needs no
+             actions of its own beyond the standard widget-update one. -->
+        <receiver
+            android:name=".SolidusVoiceWidgetProvider"
+            android:exported="true"
+            android:label="@string/w_voice_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/solidus_voice_widget_info" />
         </receiver>
 
         <meta-data

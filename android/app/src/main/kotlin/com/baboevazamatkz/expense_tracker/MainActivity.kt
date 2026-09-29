@@ -15,6 +15,7 @@ import io.flutter.plugin.common.MethodChannel
  */
 class MainActivity : FlutterActivity() {
     private var pending: Map<String, String>? = null
+    private var pendingVoice: Boolean = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -24,6 +25,10 @@ class MainActivity : FlutterActivity() {
                     "consumeLaunchAction" -> {
                         result.success(pending)
                         pending = null
+                    }
+                    "consumeVoiceLaunchAction" -> {
+                        result.success(pendingVoice)
+                        pendingVoice = false
                     }
                     else -> result.notImplemented()
                 }
@@ -37,16 +42,23 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun capture(intent: Intent?) {
-        if (intent?.action != SolidusWidgetProvider.ACTION_ADD) return
-        val type = intent.getStringExtra(SolidusWidgetProvider.EXTRA_TYPE) ?: return
-        pending = buildMap {
-            put("type", type)
-            intent.getStringExtra(SolidusWidgetProvider.EXTRA_CATEGORY)
-                ?.let { put("category", it) }
+        intent ?: return
+        when (intent.action) {
+            SolidusWidgetProvider.ACTION_ADD -> {
+                val type = intent.getStringExtra(SolidusWidgetProvider.EXTRA_TYPE)
+                    ?: return
+                pending = buildMap {
+                    put("type", type)
+                    intent.getStringExtra(SolidusWidgetProvider.EXTRA_CATEGORY)
+                        ?.let { put("category", it) }
+                }
+            }
+            SolidusVoiceWidgetProvider.ACTION_VOICE -> pendingVoice = true
+            else -> return
         }
         // The same intent is redelivered if the activity is recreated (a
-        // rotation, a theme change), which would reopen the sheet. Clearing
-        // the action makes the tap a one-shot.
+        // rotation, a theme change), which would reopen the sheet or
+        // restart listening. Clearing the action makes the tap a one-shot.
         intent.action = null
     }
 

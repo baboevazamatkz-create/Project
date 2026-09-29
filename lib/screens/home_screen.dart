@@ -12,6 +12,7 @@ import '../data/widget_launch.dart';
 import '../data/household_settings_repository.dart';
 import '../data/advice_service.dart';
 import '../data/scan_service.dart';
+import '../data/voice_service.dart';
 import '../models/category_group.dart';
 import '../models/currency.dart';
 import '../models/expense.dart';
@@ -33,6 +34,7 @@ import '../widgets/tour_step.dart';
 import 'advice_screen.dart';
 import 'scan_flow.dart';
 import 'stats_screen.dart';
+import 'voice_assistant_screen.dart';
 
 final _monthDividerFormat = DateFormat('LLLL', 'ru');
 
@@ -81,11 +83,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   AppCurrency? _lastCurrency;
   String? _publishedHousehold;
 
+  // Read only by a voice-widget launch arriving on resume (see
+  // didChangeAppLifecycleState), which has no other way to reach the
+  // expenses build() already has in scope. Kept current on every build --
+  // an unconditional field write is cheap, unlike _publishToWidget's own
+  // preferences write just above, which is why that one bothers checking
+  // whether anything changed first and this one does not.
+  List<Expense> _lastExpenses = const [];
+
   // Bumped whenever the tour changes: anyone who had seen the old steps
   // would otherwise never be shown the controls added since. v3 added the
   // scanner, v4 the list row and the scanner's own wording, v5 the advice
-  // tab.
-  static const _tourSeenKey = 'onboarding_tour_seen_v5';
+  // tab, v6 the voice assistant.
+  static const _tourSeenKey = 'onboarding_tour_seen_v6';
 
   final _repository = ExpenseRepository();
   final _scanFlow = ScanFlow();
@@ -99,10 +109,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// nothing behind this button either, so it stays hidden rather than
   /// opening a screen that can only fail.
   bool get _adviceEnabled => AdviceService.isConfigured;
+
+  /// Same worker again. Whether the microphone itself is available is a
+  /// separate, runtime question -- asked only once this button is actually
+  /// tapped, not before, so opening the app never asks for a permission it
+  /// has not been given a reason to want yet.
+  bool get _voiceEnabled => VoiceService.isConfigured;
   final _settingsRepository = HouseholdSettingsRepository();
 
   final _incomeFabKey = GlobalKey();
   final _scanKey = GlobalKey();
+  final _voiceKey = GlobalKey();
   final _rowKey = GlobalKey();
   final _expenseFabKey = GlobalKey();
   final _summaryCardKey = GlobalKey();
@@ -185,7 +202,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state != AppLifecycleState.resumed) return;
     _widgetCheckArmed = true;
     final currency = _lastCurrency;
-    if (currency != null) _maybeHandleWidgetLaunch(currency);
+    if (currency != null) {
+      _maybeHandleWidgetLaunch(currency, _lastExpenses);
+    }
   }
 
   @override
@@ -284,6 +303,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _expenseFabKey,
         _incomeFabKey,
         if (_scanEnabled) _scanKey,
+        if (_voiceEnabled) _voiceKey,
         _clearKey,
         _themeKey,
         _viewModeKey,
@@ -441,6 +461,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     AppCurrency currency, {
     Expense? existing,
     ExpenseCategory? initialCategory,
+    bool isDraft = false,
   }) {
     showModalBottomSheet(
       context: context,
@@ -452,10 +473,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           currency: currency,
           existing: existing,
           initialCategory: initialCategory,
+          isDraft: isDraft,
           onSubmit: _addExpense,
         ),
       ),
     );
+  }
+
+  /// Opens the assistant, then -- if it heard "add a record" rather than a
+  /// question -- opens the same sheet a scanned receipt goes through, with
+  /// its guess prefilled. Nothing a microphone heard is written to the
+  /// budget without this step: an answered question needs nothing further
+  /// and comes back null.
+  Future<void> _openVoiceAssistant(
+    List<Expense> expenses,
+    AppCurrency currency,
+  ) async {
+    final draft = await Navigator.of(context).push<Expense>(
+      MaterialPageRoute(
+        builder: (context) => VoiceAssistantScreen(
+          currency: currency,
+          expenses: expenses,
+        ),
+      ),
+    );
+    if (draft == null || !mounted) return;
+    _openAddSheet(draft.type, currency, existing: draft, isDraft: true);
   }
 
   /// Tells the widget which budget and currency to record into.
@@ -475,26 +518,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  /// Opens the sheet the home-screen widget asked for.
+  /// Opens the sheet or the voice assistant the home-screen widget asked
+  /// for.
   ///
   /// The check is armed on launch and again on every resume, but it only
   /// runs once the currency stream has delivered -- on a cold start the
   /// first frame arrives before it does, and consuming the tap then would
   /// throw it away with nothing to open.
-  void _maybeHandleWidgetLaunch(AppCurrency currency) {
+  void _maybeHandleWidgetLaunch(AppCurrency currency, List<Expense> expenses) {
     if (!_widgetCheckArmed) return;
     _widgetCheckArmed = false;
-    _consumeWidgetLaunch(currency);
+    _consumeWidgetLaunch(currency, expenses);
   }
 
-  Future<void> _consumeWidgetLaunch(AppCurrency currency) async {
+  Future<void> _consumeWidgetLaunch(
+    AppCurrency currency,
+    List<Expense> expenses,
+  ) async {
     final launch = await WidgetLaunchChannel.consume();
-    if (launch == null || !mounted) return;
-    _openAddSheet(
-      launch.type,
-      currency,
-      initialCategory: launch.category,
-    );
+    if (launch != null) {
+      if (!mounted) return;
+      _openAddSheet(
+        launch.type,
+        currency,
+        initialCategory: launch.category,
+      );
+      return;
+    }
+
+    // The two widgets never fire at once -- only one native intent is ever
+    // pending -- so checking this second is safe rather than racy.
+    final voiceLaunch = await WidgetLaunchChannel.consumeVoiceLaunch();
+    if (!voiceLaunch || !mounted) return;
+    _openVoiceAssistant(expenses, currency);
   }
 
   /// Same plain glyph treatment as the other AppBar icons -- it is the
@@ -854,7 +910,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   )
                 : totals;
             _publishToWidget(currency);
-            _maybeHandleWidgetLaunch(currency);
+            _lastExpenses = expenses;
+            _maybeHandleWidgetLaunch(currency, expenses);
             _maybeStartTour(
               hasContent: snapshot.hasData,
               hasRows: expenses.isNotEmpty && !_groupedByCategory,
@@ -1035,6 +1092,41 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     _openScanner(expenses, currency),
                                 tooltip: 'Распознать чек или скриншот — ИИ',
                                 child: const AiScanIcon(size: 20),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+                          if (_voiceEnabled) ...[
+                            tourStep(
+                              context,
+                              tourKey: _voiceKey,
+                              title: 'Голосовой помощник',
+                              description: 'Нажмите и продиктуйте расход или '
+                                  'доход — искусственный интеллект поймёт и '
+                                  'подготовит запись. Или спросите, сколько '
+                                  'вы потратили, и получите ответ сразу',
+                              child: FloatingActionButton.small(
+                                heroTag: 'voice_assistant',
+                                // Same treatment as the scanner button just
+                                // above: both are AI tools sitting in the
+                                // same small-FAB slot, so they read as one
+                                // family rather than two unrelated buttons.
+                                backgroundColor: Color.alphaBlend(
+                                  goldFor(context).withValues(alpha: 0.14),
+                                  sheetSurface(context),
+                                ).withValues(alpha: kFabFillOpacity),
+                                foregroundColor: goldFor(context),
+                                elevation: 3,
+                                shape: CircleBorder(
+                                  side: BorderSide(
+                                    color: goldFor(context)
+                                        .withValues(alpha: 0.55),
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    _openVoiceAssistant(expenses, currency),
+                                tooltip: 'Голосовой помощник',
+                                child: const Icon(Icons.mic_rounded, size: 20),
                               ),
                             ),
                             const SizedBox(height: 14),
