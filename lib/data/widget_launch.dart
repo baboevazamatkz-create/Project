@@ -49,4 +49,21 @@ class WidgetLaunchChannel {
       return null;
     }
   }
+
+  /// Reads a tap on the voice widget the same one-shot way. A separate
+  /// method rather than folding this into [WidgetLaunch] -- it hands back
+  /// no type or category, only "start listening", so a bool is all there
+  /// is to carry.
+  static Future<bool> consumeVoiceLaunch() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      final result =
+          await _channel.invokeMethod<bool>('consumeVoiceLaunchAction');
+      return result ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
 }

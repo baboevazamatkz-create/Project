@@ -618,6 +618,217 @@ async function handleAdvice(request, env) {
   return json(clampAdvice(result));
 }
 
+// --- голосовые команды ---------------------------------------------------
+
+const VOICE_INTENTS = ['add', 'query', 'unclear'];
+// 'net' only makes sense for a query ("сколько я заработал за вычетом
+// трат") -- clampVoiceIntent rejects it for an add, where the direction has
+// to be one or the other.
+const VOICE_TYPES = ['expense', 'income', 'net'];
+const VOICE_QUERY_CATEGORIES = [...CATEGORIES, 'all'];
+const VOICE_QUERY_PERIODS = [
+  'today',
+  'yesterday',
+  'this_week',
+  'this_month',
+  'last_month',
+  'all',
+];
+
+const VOICE_TOOL = {
+  name: 'record_voice_intent',
+  description:
+    'Разобрать голосовую команду в приложении для учёта личных финансов: '
+    + 'это просьба добавить запись о доходе/расходе или вопрос о тратах.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      intent: {
+        type: 'string',
+        enum: VOICE_INTENTS,
+        description:
+          'add -- добавить доход или расход ("потратил 500 на такси"); '
+          + 'query -- вопрос о тратах ("сколько я потратил на продукты '
+          + 'вчера"); unclear -- фраза не похожа ни на одно из двух.',
+      },
+      type: {
+        type: 'string',
+        enum: VOICE_TYPES,
+        description:
+          'Для add: expense -- деньги ушли, income -- пришли. Для query: '
+          + 'что считать -- expense, income или net (доход минус расход).',
+      },
+      amount: {
+        type: 'number',
+        description: 'Только для add: положительное число, без знака.',
+      },
+      category: {
+        type: 'string',
+        enum: VOICE_QUERY_CATEGORIES,
+        description:
+          'Категория операции. Для query можно "all", если категория не '
+          + 'названа -- тогда считать по всем сразу.',
+      },
+      date: {
+        type: 'string',
+        description:
+          'Только для add: дата операции в формате ГГГГ-ММ-ДД. "Сегодня" '
+          + 'и "вчера" считать от переданной текущей даты. Если дата не '
+          + 'названа -- подставить текущую.',
+      },
+      period: {
+        type: 'string',
+        enum: VOICE_QUERY_PERIODS,
+        description:
+          'Только для query: за какой период считать, по смыслу вопроса. '
+          + 'Если не ясно -- this_month.',
+      },
+      note: {
+        type: 'string',
+        description:
+          'Только для add: очень короткая пометка, если названо, на что '
+          + 'потрачено или откуда доход ("такси", "зарплата"). Не более '
+          + '40 символов. Пусто, если ничего такого не названо.',
+      },
+    },
+    required: ['intent'],
+  },
+};
+
+function voiceSystemPrompt(today) {
+  return [
+    'Вы разбираете голосовую команду в приложении для учёта личных денег. ',
+    'Это не написанный человеком текст, а результат распознавания речи -- ',
+    'в нём могут быть опечатки узнавания, лишние слова-паразиты и оборванные ',
+    'фразы. Разбирайте по смыслу, а не дословно.',
+    '',
+    `Сегодня ${today}.`,
+    '',
+    'Ровно две вещи, которые может попросить голос:',
+    '- Записать операцию: "потратил пятьсот на такси", "получил зарплату ',
+    '  восемьдесят тысяч", "заплатил за жильё 15000". intent = "add".',
+    '- Спросить про траты: "сколько я потратил на продукты вчера", ',
+    '  "сколько дохода за этот месяц", "сколько я вообще потратил". ',
+    '  intent = "query".',
+    '',
+    'Если фраза не про деньги вообще, слишком короткая или бессмысленная -- ',
+    'intent = "unclear", остальные поля можно не заполнять.',
+    '',
+    'Вызовите record_voice_intent ровно один раз.',
+  ].join('\n');
+}
+
+function clampVoiceIntent(raw, today) {
+  const intent = VOICE_INTENTS.includes(raw?.intent) ? raw.intent : 'unclear';
+
+  if (intent === 'add') {
+    const amount = Math.abs(Number(raw?.amount));
+    if (!Number.isFinite(amount) || amount === 0) return { intent: 'unclear' };
+    const type = raw?.type === 'income' ? 'income' : 'expense';
+    const date =
+      typeof raw?.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.date)
+        ? raw.date
+        : today;
+    return {
+      intent: 'add',
+      type,
+      amount: Math.round(amount * 100) / 100,
+      category:
+        type === 'expense'
+          ? CATEGORIES.includes(raw?.category)
+            ? raw.category
+            : 'other'
+          : null,
+      date,
+      note: String(raw?.note ?? '').trim().slice(0, 40),
+    };
+  }
+
+  if (intent === 'query') {
+    return {
+      intent: 'query',
+      type: ['expense', 'income', 'net'].includes(raw?.type)
+        ? raw.type
+        : 'expense',
+      category: VOICE_QUERY_CATEGORIES.includes(raw?.category)
+        ? raw.category
+        : 'all',
+      period: VOICE_QUERY_PERIODS.includes(raw?.period)
+        ? raw.period
+        : 'this_month',
+    };
+  }
+
+  return { intent: 'unclear' };
+}
+
+async function askModelForVoice(env, text, today) {
+  const res = await fetch(ANTHROPIC_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': ANTHROPIC_VERSION,
+    },
+    body: JSON.stringify({
+      model: env.MODEL || 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      system: voiceSystemPrompt(today),
+      tools: [VOICE_TOOL],
+      tool_choice: { type: 'tool', name: VOICE_TOOL.name },
+      messages: [{ role: 'user', content: text }],
+    }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text();
+    console.error('anthropic voice', res.status, detail.slice(0, 500));
+    if (res.status === 429) {
+      throw new HttpError(429, 'Сервис разбора занят, попробуйте позже');
+    }
+    throw new HttpError(502, 'Не удалось разобрать команду');
+  }
+
+  const body = await res.json();
+  if (body.stop_reason === 'max_tokens') {
+    throw new HttpError(502, 'Не удалось разобрать команду');
+  }
+  const block = (body.content || []).find((b) => b.type === 'tool_use');
+  if (!block) throw new HttpError(502, 'Не удалось разобрать команду');
+  return block.input || {};
+}
+
+async function handleVoice(request, env) {
+  if (!env.ANTHROPIC_API_KEY) {
+    throw new HttpError(500, 'Воркер не настроен: нет ключа ANTHROPIC_API_KEY');
+  }
+
+  const auth = request.headers.get('Authorization') || '';
+  if (!auth.startsWith('Bearer ')) throw new HttpError(401, 'Нужен вход в приложение');
+  const uid = await verifyIdToken(auth.slice(7).trim(), env.FIREBASE_PROJECT_ID);
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    throw new HttpError(400, 'Тело запроса не разобрано');
+  }
+
+  // What speech_to_text hands back is trusted no further than any other
+  // client input: capped and coerced to a string before it goes anywhere
+  // near a prompt.
+  const text = typeof payload.text === 'string' ? payload.text.trim().slice(0, 500) : '';
+  if (!text) throw new HttpError(400, 'Пустая команда');
+  const today = /^\d{4}-\d{2}-\d{2}$/.test(payload.today || '')
+    ? payload.today
+    : new Date().toISOString().slice(0, 10);
+
+  await useQuota(env, uid);
+
+  const result = await askModelForVoice(env, text, today);
+  return json(clampVoiceIntent(result, today));
+}
+
 // --- обработчик ---------------------------------------------------------
 
 async function handleScan(request, env) {
@@ -691,6 +902,9 @@ export default {
       if (pathname === '/advice' || pathname === '/advice/') {
         return await handleAdvice(request, env);
       }
+      if (pathname === '/voice' || pathname === '/voice/') {
+        return await handleVoice(request, env);
+      }
       return await handleScan(request, env);
     } catch (error) {
       if (error instanceof HttpError) {
@@ -709,9 +923,14 @@ export const __testing = {
   clampTransactions,
   clampAdvice,
   sanitizeSnapshot,
+  clampVoiceIntent,
   CATEGORIES,
   CURRENCIES,
   ADVICE_CATEGORIES,
   SEVERITIES,
   VERDICTS,
+  VOICE_INTENTS,
+  VOICE_TYPES,
+  VOICE_QUERY_CATEGORIES,
+  VOICE_QUERY_PERIODS,
 };

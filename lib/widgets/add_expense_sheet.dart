@@ -65,12 +65,20 @@ class AddExpenseSheet extends StatefulWidget {
   /// tapping. Ignored while editing, where the record's own category wins.
   final ExpenseCategory? initialCategory;
 
+  /// [existing] doubles as a draft's starting values -- the voice
+  /// assistant's best guess at what was said, say -- without this the
+  /// sheet has no way to tell "editing a real record" from "reviewing a
+  /// guess before it becomes one": both prefill the same way, but only the
+  /// former should read "Изменить" and reuse the record's own id.
+  final bool isDraft;
+
   const AddExpenseSheet({
     super.key,
     required this.type,
     required this.currency,
     this.existing,
     this.initialCategory,
+    this.isDraft = false,
     required this.onSubmit,
   });
 
@@ -94,7 +102,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
   DateTime _selectedDate = DateTime.now();
   String? _errorText;
 
-  bool get _isEditing => widget.existing != null;
+  bool get _isEditing => widget.existing != null && !widget.isDraft;
 
   @override
   void initState() {
@@ -146,7 +154,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
     widget.onSubmit(
       Expense(
-        id: widget.existing?.id ?? const Uuid().v4(),
+        id: _isEditing ? widget.existing!.id : const Uuid().v4(),
         amount: amount,
         category:
             widget.type == TransactionType.expense ? _selectedCategory : null,
