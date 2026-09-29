@@ -1,14 +1,23 @@
-// Два дела на одном воркере: разбор чеков и банковских скриншотов
-// (POST на корень) и разбор трат с советами по оптимизации (POST на
-// /advice). Обоим приложение присылает данные, воркер спрашивает у
-// модели и возвращает результат. Ключ Anthropic хранится секретом
-// воркера: положить его в клиент нельзя -- и веб-сборку, и APK можно
-// разобрать и достать оттуда что угодно.
+// Три дела на одном воркере: разбор чеков и банковских скриншотов
+// (POST на корень), разбор трат с советами по оптимизации (POST на
+// /advice) и разбор голосовых команд (POST на /voice). Приложение
+// присылает данные, воркер спрашивает у модели и возвращает результат.
+// Ключ Anthropic хранится секретом воркера: положить его в клиент
+// нельзя -- и веб-сборку, и APK можно разобрать и достать оттуда что
+// угодно.
 //
 // Единственный пропуск -- токен Firebase того же проекта, что и у
-// приложения. Проверяется подпись, издатель, адресат и срок. Оба
-// маршрута делят один суточный лимит на пользователя: это одна и та же
-// защита от чужого счёта, не два разных бюджета.
+// приложения. Проверяется подпись, издатель, адресат и срок. Все
+// маршруты делят один суточный лимит на пользователя: это одна и та же
+// защита от чужого счёта, не разные бюджеты.
+
+// Растёт с каждым новым маршрутом. Виден в GET / -- так после публикации
+// можно открыть адрес воркера в браузере и убедиться, что опубликовалось
+// именно то, что нужно, -- и в заголовке X-Solidus-Worker на каждом
+// ответе, по которому приложение отличает этот код от версии, где
+// маршрута ещё нет.
+const WORKER_VERSION = 3;
+const WORKER_ROUTES = 'сканер (/), советы (/advice), голос (/voice)';
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -46,13 +55,19 @@ const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  // Without this a browser hides the version header from the web build.
+  'Access-Control-Expose-Headers': 'X-Solidus-Worker',
   'Access-Control-Max-Age': '86400',
 };
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS },
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-Solidus-Worker': String(WORKER_VERSION),
+      ...CORS,
+    },
   });
 }
 
@@ -887,16 +902,23 @@ export default {
     }
     const { pathname } = new URL(request.url);
     if (request.method === 'GET' && (pathname === '/' || pathname === '')) {
-      return new Response('solidus-scan ok\n', {
-        headers: { 'Content-Type': 'text/plain; charset=utf-8', ...CORS },
-      });
+      return new Response(
+        `solidus-scan ok\nверсия ${WORKER_VERSION}: ${WORKER_ROUTES}\n`,
+        {
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'X-Solidus-Worker': String(WORKER_VERSION),
+            ...CORS,
+          },
+        },
+      );
     }
     if (request.method !== 'POST') {
       return json({ error: 'Метод не поддерживается' }, 405);
     }
     try {
-      // Trailing slash tolerated: the client builds this by resolving
-      // 'advice' against an endpoint that itself may or may not end in
+      // Trailing slash tolerated: the client builds these by resolving a
+      // route name against an endpoint that itself may or may not end in
       // one, and getting that exactly right on both ends is not worth
       // the coupling.
       if (pathname === '/advice' || pathname === '/advice/') {
@@ -905,7 +927,17 @@ export default {
       if (pathname === '/voice' || pathname === '/voice/') {
         return await handleVoice(request, env);
       }
-      return await handleScan(request, env);
+      if (pathname === '/' || pathname === '') {
+        return await handleScan(request, env);
+      }
+      // Any other address used to fall through to the scanner, which is
+      // how a voice command sent to a worker that predated /voice came
+      // back as "Пустой снимок". A route this worker doesn't know now says
+      // exactly that.
+      throw new HttpError(
+        404,
+        `Сервер не знает адреса ${pathname}: опубликуйте воркер заново`,
+      );
     } catch (error) {
       if (error instanceof HttpError) {
         return json({ error: error.message }, error.status);
@@ -920,6 +952,7 @@ export default {
 // test/scan_test.dart и test/advice_test.dart, и должна совпадать с
 // clampTransactions и clampAdvice.
 export const __testing = {
+  WORKER_VERSION,
   clampTransactions,
   clampAdvice,
   sanitizeSnapshot,
