@@ -14,6 +14,7 @@ import 'package:expense_tracker/models/expense_category.dart';
 import 'package:expense_tracker/models/transaction_type.dart';
 import 'package:expense_tracker/models/voice_answer.dart';
 import 'package:expense_tracker/models/voice_intent.dart';
+import 'package:expense_tracker/models/voice_parser.dart';
 import 'package:expense_tracker/screens/voice_assistant_screen.dart';
 import 'package:expense_tracker/theme.dart';
 import 'package:expense_tracker/widgets/add_expense_sheet.dart';
@@ -354,31 +355,249 @@ void main() {
       expect(called, isFalse);
     });
 
-    test('the worker’s own wording is what the user is shown', () async {
+    test(
+        'the worker’s own wording is shown when the device can’t read '
+        'the phrase either', () async {
       final service = _service((_) async => http.Response(
             jsonEncode({'error': 'На сегодня разборов больше нет'}),
             429,
-            headers: {'content-type': 'application/json; charset=utf-8'},
+            headers: {
+              'content-type': 'application/json; charset=utf-8',
+              kWorkerVersionHeader: '3',
+            },
           ));
 
       expect(
-        () => service.parse('добавь расход 500'),
+        () => service.parse('абракадабра'),
         throwsA(isA<VoiceException>().having(
             (e) => e.message, 'message', 'На сегодня разборов больше нет')),
       );
     });
 
-    test('an unconfigured assistant refuses before any request', () async {
+    test('over the quota, a plain phrase is still read on the device',
+        () async {
+      final service = _service((_) async => http.Response(
+            jsonEncode({'error': 'На сегодня разборов больше нет'}),
+            429,
+            headers: {
+              'content-type': 'application/json; charset=utf-8',
+              kWorkerVersionHeader: '3',
+            },
+          ));
+
+      final intent = await service.parse('потратил 500 на такси',
+          today: DateTime(2026, 9, 29));
+
+      expect(intent, isA<VoiceAddIntent>());
+      expect((intent as VoiceAddIntent).amount, 500);
+      expect(intent.category, ExpenseCategory.transport);
+    });
+
+    group('a worker from before /voice', () {
+      // Exactly what the first release met: the phrase posted to /voice,
+      // an old worker sending it to the scanner, and the scanner's own
+      // complaint about a missing image coming back -- with none of the
+      // version header a current worker sets.
+      http.Response scannerAnswer(http.Request _) => http.Response(
+            jsonEncode({'error': 'Пустой снимок'}),
+            400,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+
+      test('no longer blocks a phrase the device can read', () async {
+        final service = _service((r) async => scannerAnswer(r));
+
+        final intent = await service.parse('потратил 500 на такси',
+            today: DateTime(2026, 9, 29));
+
+        expect(intent, isA<VoiceAddIntent>());
+        final add = intent as VoiceAddIntent;
+        expect(add.amount, 500);
+        expect(add.category, ExpenseCategory.transport);
+        expect(add.note, 'такси');
+      });
+
+      test('answers a question on the device too', () async {
+        final service = _service((r) async => scannerAnswer(r));
+
+        final intent = await service.parse(
+            'сколько я потратил на продукты вчера',
+            today: DateTime(2026, 9, 29));
+
+        expect(intent, isA<VoiceQueryIntent>());
+        final query = intent as VoiceQueryIntent;
+        expect(query.category, ExpenseCategory.food);
+        expect(query.period, VoiceQueryPeriod.yesterday);
+      });
+
+      test('is named plainly, never as "Пустой снимок"', () async {
+        final service = _service((r) async => scannerAnswer(r));
+
+        expect(
+          () => service.parse('абракадабра'),
+          throwsA(isA<VoiceException>()
+              .having((e) => e.message, 'message', contains('не обновлён'))
+              .having((e) => e.message, 'message', isNot(contains('снимок')))),
+        );
+      });
+    });
+
+    test('without a network, a plain phrase is still read on the device',
+        () async {
+      final service =
+          _service((_) async => throw http.ClientException('offline'));
+
+      final intent = await service.parse('получил зарплату 80 000',
+          today: DateTime(2026, 9, 29));
+
+      expect(intent, isA<VoiceAddIntent>());
+      final add = intent as VoiceAddIntent;
+      expect(add.type, VoiceRecordType.income);
+      expect(add.amount, 80000);
+    });
+
+    test('an unconfigured assistant reads on the device, sending nothing',
+        () async {
+      var called = false;
       final service = VoiceService(
         endpoint: '',
         token: () async => 'token',
-        client: MockClient((_) async => http.Response('{}', 200)),
+        client: MockClient((_) async {
+          called = true;
+          return http.Response('{}', 200);
+        }),
       );
 
-      expect(
-        () => service.parse('добавь расход 500'),
+      final intent = await service.parse('потратил 500 на такси');
+
+      expect(intent, isA<VoiceAddIntent>());
+      expect(called, isFalse);
+      await expectLater(
+        service.parse('абракадабра'),
         throwsA(isA<VoiceException>()),
       );
+    });
+
+    test('the worker’s answer wins when it has one', () async {
+      final service = _service((_) async => http.Response(
+            jsonEncode({
+              'intent': 'add',
+              'type': 'expense',
+              'amount': 700,
+              'category': 'entertainment',
+              'date': '2026-09-29',
+              'note': 'кино',
+            }),
+            200,
+            headers: {
+              'content-type': 'application/json; charset=utf-8',
+              kWorkerVersionHeader: '3',
+            },
+          ));
+
+      // Locally this would be read as 500 for transport.
+      final add =
+          await service.parse('потратил 500 на такси') as VoiceAddIntent;
+      expect(add.amount, 700);
+      expect(add.category, ExpenseCategory.entertainment);
+    });
+  });
+
+  group('Reading a phrase on the device', () {
+    final today = DateTime(2026, 9, 29);
+    VoiceIntent read(String phrase) => parseVoiceCommand(phrase, today: today);
+
+    VoiceAddIntent add(String phrase) {
+      final intent = read(phrase);
+      expect(intent, isA<VoiceAddIntent>(), reason: phrase);
+      return intent as VoiceAddIntent;
+    }
+
+    VoiceQueryIntent ask(String phrase) {
+      final intent = read(phrase);
+      expect(intent, isA<VoiceQueryIntent>(), reason: phrase);
+      return intent as VoiceQueryIntent;
+    }
+
+    test('an expense: amount, category, note, today', () {
+      final r = add('Потратил 500 рублей на такси');
+      expect(r.type, VoiceRecordType.expense);
+      expect(r.amount, 500);
+      expect(r.category, ExpenseCategory.transport);
+      expect(r.note, 'такси');
+      expect(r.date, DateTime(2026, 9, 29));
+    });
+
+    test('income, with the note it deserves', () {
+      final r = add('Получил зарплату 80 000');
+      expect(r.type, VoiceRecordType.income);
+      expect(r.amount, 80000);
+      expect(r.category, isNull);
+      expect(r.note, 'Зарплата');
+    });
+
+    test('yesterday and the day before', () {
+      expect(add('вчера кофе 250').date, DateTime(2026, 9, 28));
+      expect(add('позавчера обед в кафе 750').date, DateTime(2026, 9, 27));
+    });
+
+    test('thousands said every way a recogniser writes them', () {
+      expect(add('кроссовки за 5 тысяч').amount, 5000);
+      expect(add('5к на одежду').amount, 5000);
+      expect(add('игрушка 1 500 ₽').amount, 1500);
+      expect(add('кофе 350,50').amount, 350.5);
+    });
+
+    test('numbers spelled out in words', () {
+      expect(add('потратил пятьсот рублей на такси').amount, 500);
+      expect(add('полторы тысячи на продукты').amount, 1500);
+      expect(add('две тысячи триста за интернет').amount, 2300);
+    });
+
+    test('a date in the phrase is not mistaken for the amount', () {
+      expect(add('25 сентября купил продукты на 1500').amount, 1500);
+    });
+
+    test('words that look like income or a question but are not', () {
+      // "пришлось" ("had to") starts like "пришло" (came in).
+      expect(add('пришлось заплатить 1200 за такси').type,
+          VoiceRecordType.expense);
+      // "премьера" (an opening night) starts like "премия" (a bonus).
+      expect(add('премьера в кино 800').type, VoiceRecordType.expense);
+      // "какой-то" opens like a question but a figure was said.
+      expect(add('какой-то кофе 300').amount, 300);
+      // "еду" is also "I'm riding" -- the taxi is what was paid for.
+      expect(
+          add('еду на такси заплатил 400').category, ExpenseCategory.transport);
+    });
+
+    test('questions: what, which category, which stretch of time', () {
+      final food = ask('Сколько я потратил на продукты вчера');
+      expect(food.type, VoiceQueryType.expense);
+      expect(food.category, ExpenseCategory.food);
+      expect(food.period, VoiceQueryPeriod.yesterday);
+
+      expect(
+          ask('Сколько я заработал в этом месяце').type, VoiceQueryType.income);
+      expect(ask('Сколько у меня осталось за неделю').type, VoiceQueryType.net);
+      expect(ask('Сколько у меня осталось за неделю').period,
+          VoiceQueryPeriod.thisWeek);
+      expect(ask('сколько всего я потратил за всё время').period,
+          VoiceQueryPeriod.all);
+      expect(ask('Покажи расходы за прошлый месяц').period,
+          VoiceQueryPeriod.lastMonth);
+    });
+
+    test('nothing to go on is unclear, not a guess', () {
+      expect(read('абракадабра'), isA<VoiceUnclearIntent>());
+      expect(read('привет как дела'), isA<VoiceUnclearIntent>());
+      expect(read(''), isA<VoiceUnclearIntent>());
+    });
+
+    test('an unknown thing bought is still a record, filed under other', () {
+      final r = add('потратил 900');
+      expect(r.category, ExpenseCategory.other);
+      expect(r.note, '');
     });
   });
 
@@ -472,6 +691,36 @@ void main() {
       expect(result!.amount, 500);
       expect(result!.category, ExpenseCategory.transport);
       expect(result!.type, TransactionType.expense);
+    });
+
+    testWidgets(
+        'against a worker from before /voice, the phrase still becomes a '
+        'draft instead of "Пустой снимок"', (tester) async {
+      final recognizer = FakeSpeechRecognizer();
+      final service = _service((_) async => http.Response(
+            jsonEncode({'error': 'Пустой снимок'}),
+            400,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          ));
+      Expense? result;
+
+      await pumpScreenAndGetDraft(
+        tester,
+        recognizer: recognizer,
+        service: service,
+        onResult: (draft) => result = draft,
+      );
+
+      recognizer.emit('потратил 500 на такси');
+      recognizer.finish();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.textContaining('снимок'), findsNothing);
+      expect(result, isNotNull);
+      expect(result!.amount, 500);
+      expect(result!.category, ExpenseCategory.transport);
     });
 
     testWidgets('a question is answered on screen, nothing handed back',
