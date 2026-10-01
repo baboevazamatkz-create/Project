@@ -1,4 +1,4 @@
-# Solidus
+# Altyn
 
 Совместный учёт расходов и доходов: общий бюджет на несколько человек,
 Android и веб из одного кода.
@@ -44,7 +44,7 @@ flutter run --dart-define=SCAN_ENDPOINT=https://solidus-scan.<имя>.workers.de
 
 - **APK** — GitHub Actions на каждый push в `main`. Постоянная ссылка на
   последнюю сборку:
-  https://github.com/baboevazamatkz-create/Project/releases/latest/download/Solidus.apk
+  https://github.com/baboevazamatkz-create/Project/releases/latest/download/Altyn.apk
 - **Веб** — GitHub Pages, публикуется тем же push:
   https://baboevazamatkz-create.github.io/Project/
 

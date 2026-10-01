@@ -218,7 +218,7 @@ class _HouseholdScreenState extends State<HouseholdScreen> {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            'SOLIDUS',
+                            'ALTYN',
                             style: wordmark(
                               context,
                               size: 12 * _kWordmarkScale,

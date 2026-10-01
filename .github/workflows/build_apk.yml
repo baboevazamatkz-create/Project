@@ -126,7 +126,7 @@ jobs:
       # account to download -- this repository is public, so the asset URL
       # is simply a file on the web. The asset is named without the version
       # on purpose: that makes
-      #   .../releases/latest/download/Solidus.apk
+      #   .../releases/latest/download/Altyn.apk
       # a permanent link to whatever the newest build is, which is the one
       # worth bookmarking or sending to someone.
       - name: Publish release
@@ -137,23 +137,23 @@ jobs:
           set -euo pipefail
           version=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
           tag="v${version}-${{ github.run_number }}"
-          cp build/app/outputs/flutter-apk/app-release.apk Solidus.apk
-          cp build/app/outputs/bundle/release/app-release.aab Solidus.aab
+          cp build/app/outputs/flutter-apk/app-release.apk Altyn.apk
+          cp build/app/outputs/bundle/release/app-release.aab Altyn.aab
 
           # Written to a file rather than passed inline, so the notes keep
           # their own indentation instead of this block's.
           {
             git log -1 --pretty=%s
             echo
-            echo "Скачайте Solidus.apk и откройте его на телефоне. Ставится поверх предыдущей версии, данные сохраняются."
+            echo "Скачайте Altyn.apk и откройте его на телефоне. Ставится поверх предыдущей версии, данные сохраняются."
             echo
             echo "Постоянная ссылка на последнюю версию:"
-            echo "https://github.com/${{ github.repository }}/releases/latest/download/Solidus.apk"
+            echo "https://github.com/${{ github.repository }}/releases/latest/download/Altyn.apk"
             echo
-            echo "Solidus.aab — сборка для Google Play, код версии ${{ github.run_number }}."
+            echo "Altyn.aab — сборка для Google Play, код версии ${{ github.run_number }}."
           } > release-notes.md
 
-          gh release create "$tag" Solidus.apk Solidus.aab \
-            --title "Solidus $version — сборка ${{ github.run_number }}" \
+          gh release create "$tag" Altyn.apk Altyn.aab \
+            --title "Altyn $version — сборка ${{ github.run_number }}" \
             --notes-file release-notes.md \
             --latest
