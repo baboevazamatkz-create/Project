@@ -121,7 +121,7 @@ void main() {
         home: HouseholdScreen(canCancel: canCancel, onReady: (_) {}),
       ));
       await tester.pumpAndSettle();
-      expect(find.text('SOLIDUS'), findsOneWidget,
+      expect(find.text('ALTYN'), findsOneWidget,
           reason: 'wordmark missing with canCancel: $canCancel');
       expect(find.text('Единый ритм\nмалых финансов'), findsOneWidget,
           reason: 'tagline missing with canCancel: $canCancel');

@@ -105,7 +105,7 @@ def write_feature():
     name_font = ImageFont.truetype(PLAYFAIR, name_size)
     tracking = name_size * 0.12
     name_y = int(h * 0.30)
-    end_x = _tracked(draw, (text_x, name_y), 'SOLIDUS', name_font,
+    end_x = _tracked(draw, (text_x, name_y), 'ALTYN', name_font,
                      CHAMPAGNE, tracking)
 
     rule_y = name_y + int(name_size * 1.42)

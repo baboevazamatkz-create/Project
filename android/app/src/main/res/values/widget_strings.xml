@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="w_widget_label">Solidus — быстрая запись</string>
+    <string name="w_widget_label">Altyn — быстрая запись</string>
     <string name="w_widget_description">Расход с категорией и доход, с цифровой клавиатурой: сумма набирается прямо на рабочем столе.</string>
     <string name="w_amount_hint">Сумма</string>
     <string name="w_category_action">Вид траты</string>
@@ -12,7 +12,7 @@
     <string name="w_minus">−</string>
     <string name="w_plus">+</string>
 
-    <string name="w_voice_widget_label">Solidus — голосом</string>
+    <string name="w_voice_widget_label">Altyn — голосом</string>
     <string name="w_voice_widget_description">Открывает приложение и сразу слушает: продиктуйте расход, доход или вопрос о тратах.</string>
     <string name="w_voice_glyph">🎙️\nГолосом</string>
     <string name="w_voice_action">Голосовой ввод</string>
